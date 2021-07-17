@@ -1,9 +1,11 @@
 import { configureStore, ThunkAction, Action } from '@reduxjs/toolkit';
 import counterReducer from '../features/counter/counterSlice';
+import seqReducer from '../features/seq/seqSlice'
 
 export const store = configureStore({
   reducer: {
     counter: counterReducer,
+        seq: seqReducer,
   },
 });
 

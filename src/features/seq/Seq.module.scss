@@ -55,7 +55,7 @@
 }
 
 .asyncButton {
-  composes: button;
+  @extend .button;
   position: relative;
 }
 
@@ -76,4 +76,26 @@
   width: 0%;
   opacity: 1;
   transition: 0s;
+}
+
+.seq { 
+  display :block;
+
+.graphcontainer{
+  padding-left: 30px;
+  padding-right: 30px;
+}
+}
+.graphaxis{
+  pointer-events: none;
+}
+.visx-group .visx-axis-tick {
+  pointer-events: none;
+  user-select: none;
+}
+.static {
+  cursor: not-allowed;
+}
+.draggable {
+  cursor: move;
 }
