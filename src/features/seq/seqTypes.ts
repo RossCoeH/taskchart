@@ -2,7 +2,7 @@ export interface ILayout{
   barPad: number,
 	PortDotSize: number,
 	portTriLength: number,
-	portHeight: number, // ratio of barspacing
+	portTriHeight: number, // ratio of barspacing
 	numPortIn: number,
 	numPortOut: number,
 	numPortReturn: number,
@@ -45,9 +45,9 @@ export interface ITaskDtl{
   index:number
   name:string
   duration:number
-  froms:number[]
-	rets:number[]
-  tos:number[]
+  froms:Link[]
+	rets:Link[]
+  tos:Link[]
   start:number
 	} 
 

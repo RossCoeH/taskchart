@@ -13,11 +13,11 @@ interface ITaskBar {
 	ytop: number
 	index: number
 	barHeight: number
-	barWidth: number
-	start: number
+	xEnd: number
+	xStart: number
 	//props:React.SVGProps<SVGRect>,
 	fill?: string
-	children:React.ReactNode|null
+	children?:React.ReactNode|null
 
 	onMouseDown?: React.MouseEventHandler<SVGRectElement>
 	onMouseUp?: React.MouseEventHandler<SVGRectElement>
@@ -33,8 +33,8 @@ const TaskBar = (props: ITaskBar) => {
 		ytop,
 		index,
 		barHeight,
-		barWidth,
-		start,
+		xEnd,
+		xStart ,
 		fill,
 		onMouseDown,
 		onMouseUp,
@@ -71,9 +71,9 @@ const TaskBar = (props: ITaskBar) => {
 			className='bar task'
 			rx={2}
 			key={`tbar-${label}`}
-			x={start}
+			x={xStart}
 			y={ytop}
-			width={barWidth}
+			width={xEnd-xStart}
 			height={barHeight}
 			fill={fill || 'lightblue'}
 			// handleDragStart:{handleSvgTaskMouseDown}

@@ -19,7 +19,7 @@ const PortDot=(props:iPortDot  )=>{
  const{cx,cy,r,
 className,fill,stroke,iLayout}=props
 
-console.log(`PortDot props`, props)
+// console.log(`PortDot props`, props)
   const dispatch = useAppDispatch();
 
   return(

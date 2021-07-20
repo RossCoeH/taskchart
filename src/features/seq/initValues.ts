@@ -3,13 +3,13 @@ import {Link,Task,ILayout} from './seqTypes'
 export const initialLayout:ILayout = {
 	barPad: 7,
 	PortDotSize: 0.08,
-	portTriLength: 0.4,
-	portHeight: 0.15, // ratio of barspacing
+	portTriLength: 0.4, // ratio of barspacing
+	portTriHeight: 0.2, // ratio of barspacing
 	numPortIn: 4,
 	numPortOut: 4,
 	numPortReturn: 3,
 	portTypes: { in: 'In', out: 'out', return: 'return' },
-	graphWidth: 800,
+	graphWidth: 1020,
 	graphHeight: 500,
 	graphPadTop: 45,
 	graphPadLeft: 10,
@@ -18,7 +18,7 @@ export const initialLayout:ILayout = {
 	graphX0:30,
 	graphAxisColor:  '#4380cc',
 	barSpacing: 40,
-	portLinkHoffset: 0.3,
+	portLinkHoffset: 0.25,
 	portLinkVoffset: 0.2,
 	// highlightArrowRatio sets the hover or selected scale
 	highlightSizeRatio: 1.5,

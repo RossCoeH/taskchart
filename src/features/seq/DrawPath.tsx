@@ -2,16 +2,17 @@ import React from 'react'
 import {LinePath} from '@visx/visx'
 import {XY} from './seqTypes'
 import {scaleLinear} from '@visx/visx'
-import { isJsxElement } from 'typescript'
 
-export interface DrawPathProps{
+export interface IDrawPath{
   path:(XY[]), 
 	id:string|number, 
 	color:string,
 	cornerRadius:number
+	xScale:any,
+	yScale:any,
 }
 
-const DrawLine:React.FC<DrawPathProps>= ({path, id, color})  => {
+const DrawPath:React.FC<IDrawPath>= ({path, id, color,xScale,yScale})  => {
 	const bezierWeight = 0.175
 	return (
 		<LinePath
@@ -26,3 +27,5 @@ const DrawLine:React.FC<DrawPathProps>= ({path, id, color})  => {
 		/>
 	)
 }
+
+export default DrawPath
