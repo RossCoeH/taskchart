@@ -1,0 +1,39 @@
+
+	$first-color: rgb(108, 17, 255);
+	$hover-color: rgb(141, 64, 165);
+	$highlight-color: rgb(24, 71, 6);
+
+.link {
+	color: $first-color;
+	stroke-width: 2px;
+	stroke: $first-color;
+  pointer-events: stroke;
+}
+
+.linkStart{
+  	fill: $first-color;
+}
+.linkStartIsHover {
+  	fill: $hover-color;
+}
+.linkEnd {
+	fill: $first-color;
+}
+.linkEndIsHover {
+  	fill: $hover-color;
+}
+.linkIsHover {
+	stroke: $hover-color;
+	stroke-width: 4px;
+}
+.linkIsSelected.linkIsSelected{
+	stroke-width: 4px;
+	stroke: $highlight-color;
+}
+.linkFillIsSelected.linkFillIsSelected{
+	fill: $highlight-color;
+}
+/* .link.isHover :polygon {
+	fill: var($hover-color);
+  transform: scale(1.5);
+} */

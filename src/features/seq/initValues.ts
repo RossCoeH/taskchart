@@ -2,7 +2,7 @@ import {Link,Task,ILayout} from './seqTypes'
 
 export const initialLayout:ILayout = {
 	barPad: 7,
-	PortDotSize: 0.08,
+	PortDotSize: 0.10,
 	portTriLength: 0.4, // ratio of barspacing
 	portTriHeight: 0.2, // ratio of barspacing
 	numPortIn: 4,
@@ -25,6 +25,10 @@ export const initialLayout:ILayout = {
 }
 export const initTasksArray:Task[]=[
  {
+    id:0,
+    name:'name 0',
+    duration:1,
+  },{
     id:1,
     name:'name 1',
     duration:10,
@@ -43,6 +47,11 @@ export const initTasksArray:Task[]=[
     id:4,
     name:'name 4 ',
     duration:30,
+  },
+	{
+    id:5,
+    name:'name 5 ',
+    duration:5,
   }
 ]
 

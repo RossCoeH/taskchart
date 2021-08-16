@@ -21,7 +21,7 @@ export interface ILayout{
 	// highlightArrowRatio sets the hover or selected scale
 	highlightSizeRatio: number,
 }
-
+export enum dragAction{'none','dragLine','canCreateLink','pan'}
 
 export interface Link{
   id:number,

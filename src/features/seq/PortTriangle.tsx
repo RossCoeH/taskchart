@@ -6,6 +6,7 @@ fill?:string|undefined,
 stroke?:string|undefined,
 onMouseEnter?: React.MouseEventHandler<SVGPolygonElement>
 onMouseLeave?: React.MouseEventHandler<SVGPolygonElement>
+onMouseUp?: React.MouseEventHandler<SVGPolygonElement>
 }
 const PortTriangle =(props:IPortTriangle)=> {
   const {x,y,height,width,className,fill,stroke}=props
@@ -21,6 +22,7 @@ className={className}
 points= {points}
 fill={fill}
 stroke={stroke}
+onMouseUp={props.onMouseUp}
 />
   )
 }
