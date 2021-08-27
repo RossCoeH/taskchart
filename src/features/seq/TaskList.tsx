@@ -1,0 +1,304 @@
+import { useMeasure } from '@react-hookz/web'
+import { act } from '@testing-library/react'
+import React, {
+	useState,
+	ReactHTMLElement,
+	CSSProperties,
+	useRef,
+	useDebugValue,
+	useEffect,
+	useCallback,
+	LegacyRef,
+	RefObject,
+} from 'react'
+import { ReactNode } from 'react'
+import { useSelector } from 'react-redux'
+// import { Container, Section, Bar } from 'react-simple-resizer'
+import { useAppSelector } from '../../app/hooks'
+import { selTasks } from './seqSlice'
+import { Task } from './seqTypes'
+import './TaskList.scss'
+import TanTableResize from './TanTableResize'
+
+interface Icol {
+	Header: string
+	accessor: keyof Task
+	width: string
+	minWidthPx: number
+}
+const InitColumns: Icol[] = [
+	{
+		Header: 'Id',
+		accessor: 'id',
+		width: '5em',
+		minWidthPx: 5,
+	},
+	{
+		Header: 'Task Name',
+		accessor: 'name',
+		width: '15em',
+		minWidthPx: 5,
+	},
+	{
+		Header: 'Duration',
+		accessor: 'duration',
+		width: '5em',
+		minWidthPx: 5,
+	},
+]
+
+const CreateHeaders = (colOrder: (keyof Task)[], columns: Icol[]) => {
+	const newRef = useRef<any>()
+	if (Array.isArray(colOrder))
+		return colOrder.map((col, index: number) => {
+			const matchCol = columns.find((column) => col === column.accessor)
+			const matchText = (matchCol && matchCol['Header']) || '?'
+			return {
+				text: matchText,
+				minWidthPx: (matchCol && matchCol.minWidthPx) || 5,
+				ref: newRef,
+			}
+		})
+	else
+		return typeof colOrder === 'number'
+			? [
+					{
+						text: columns[colOrder]['Header'] || '?',
+						minWidthPx: columns[colOrder].minWidthPx || 5,
+						ref: newRef,
+					},
+			  ]
+			: []
+}
+
+const TaskList = () => {
+	const tasks = useAppSelector(selTasks.selectAll)
+	const [columns, setColumns] = useState(InitColumns)
+	const colOrder: (keyof Task)[] = [
+		'id' as const,
+		'name' as const,
+		'duration' as const,
+	]
+	
+	const [activeColIndex, setActiveColIndex] = useState<keyof Task | undefined>(
+		undefined
+	)
+	const [activeColRef,setActiveColRef]=useState<RefObject<HTMLTableHeaderCellElement>|undefined>(undefined)
+
+	useDebugValue(activeColIndex, (activeColIndex) => {
+		return `activeCellIndex ${activeColIndex}`
+	})
+	const tableElement = useRef<any | null>(null)
+// 	const activeColHeader = useRef<Element>()
+// const [measurements,activeColHeader] = useMeasure()
+
+	const handle_mouseDown_r2 = (index:keyof Task,ref?:React.MutableRefObject<any>) => {
+		setActiveColIndex(index)
+    if (
+		activeColIndex !== undefined 
+				)
+		if(ref?.current) setActiveColRef(ref.current)
+		console.log(`mousedown start at index:`, index)
+	}
+	const handle_mouseUp_r2 = () => {
+		console.log(`mousedown start`, setActiveColIndex(undefined))
+	}
+
+	const getHeaders = CreateHeaders(colOrder, columns)
+
+	const [colWidths, setColWidths] = useState([20, 100, 50]) //widths in pixels
+interface IHeaderCell{
+	index:number,
+	text:string,
+	width?:number
+	minWidthPx:number
+}
+	
+	const HeaderCell=(props:Partial<IHeaderCell>)=>{
+		const {index,text,width,minWidthPx}=props
+  const ref=useRef<HTMLTableHeaderCellElement>(null)
+	const style = width ?{ width: `${width}px` ,minWidth: `${minWidthPx}px` }:undefined
+ if (index ===undefined) return <th>?</th>
+	console.log(`HeaderCell- ActiveCol , index,text,width,minWidthPx`,activeColIndex ,index,text,width,minWidthPx)
+return(
+<th
+							className='tableList_th'
+							key={`${index}=${text}`}
+						//	ref=	{(activeColIndex === index )?CreateHeaders[index].ref:undefined}
+							style={style}
+						>
+							<span>{text || '?'} </span>
+							<div
+								className={`tableList resize-handle ${
+									activeColIndex === colOrder[index] ? 'active' : 'idle'
+								}`}
+								style={{ width: '0.2em', height: '100%', cursor: 'col-resize' }}
+								onMouseDown={() => handle_mouseDown_r2(colOrder[index],ref)}
+								// onMouseDown ={()=>handle_mouseDown_resize(index)}
+							></div>
+						</th>
+)
+	}
+
+	const HeaderRow =(props:ReactNode)=> 
+	{
+		console.log(`HeaderRox`, getHeaders)
+	return( 
+		<tr className='tableList th span'>
+		
+				{getHeaders.map((item, index) => 
+						<th>
+							<HeaderCell text ={item.text} index={index} minWidthPx={item.minWidthPx} width={colWidths[index]||15}/>
+				</th>	
+				)}
+			
+		</tr>)}
+	
+
+	const tRows = (columns: Icol[]) => {
+		if (columns === undefined) return null
+		return tasks.map((task: Task) => (
+			<tr className='taskList row'>
+				{columns.map((col, index) => (
+					<tr className='tableList'>
+						<td className='tableList' key={`${task.id}-${colOrder[index]}`}>
+							<p>{task[colOrder[index]]} </p>
+						</td>
+					</tr>
+				))}
+			</tr>
+		))
+	}
+	const containerStyle: CSSProperties = {
+		height: '500px',
+		userSelect: 'none',
+		fontSize: '16px',
+		fontFamily: 'sans-serif',
+		textAlign: 'center',
+		whiteSpace: 'nowrap',
+	}
+
+	const [mouseStartPosition, setStartMousePosition] = useState({
+		x: 0,
+		y: 0,
+	}) 
+	const [mousePosition, setMousePosition] = useState({
+		x: 0,
+		y: 0,
+	}) 
+	const setMouseUp = useCallback((e) => setActiveColIndex(undefined), [activeColIndex])
+
+	const setFromEvent = useCallback((e: MouseEvent) => {
+		console.log(`move e: refLeft `, e, activeColRef?.current?.offsetLeft,activeColRef)
+	
+      if(activeColIndex !==undefined) {
+      let newColWidths=[...colWidths]
+			if (activeColRef?.current?.offsetLeft){ 
+     // newColWidths[activeColIndex]=Math.max(e.clientX-activeColRef.current.offsetLeft,columns[activeColIndex].minWidthPx)
+     // console.log(`newColWidth ${activeColIndex}`, newColWidths[activeColIndex])
+      setColWidths(newColWidths)
+			setMousePosition({
+			x: e.clientX,
+			y: e.clientY,
+    })
+			}
+		}
+  
+	}, [activeColIndex,activeColRef])
+	// if (
+	// 	activeColIndex !== undefined &&
+	// 	activeColIndex >= 0 &&
+	// 	getHeaders[activeColIndex].ref.current
+	// )
+	// 	activeColHeader.current = getHeaders[activeColIndex].ref.current
+	// else activeColHeader.current = undefined
+	useEffect(() => {
+		if (activeColIndex !== undefined) {
+			window.addEventListener('mousemove', setFromEvent)
+			window.addEventListener('mouseup', setMouseUp)
+		} else {
+			window.removeEventListener('mousemove', setFromEvent)
+			window.removeEventListener('mouseup', setMouseUp)
+		}
+		return () => {
+			window.removeEventListener('mousemove', setFromEvent)
+			window.removeEventListener('mouseup', setMouseUp)
+		}
+	}, [activeColIndex])
+
+	// const ColMouseMove_resize= useCallback((e:MouseEvent) => {
+
+	// 	const gridColumns = colOrder.map((col, i:number) => {
+	//     // console.log(`activeColIndex ${activeColIndex} - getHeaders[i].ref.current.offsetLeft`, getHeaders[i].ref.current.offsetLeft)
+	// 	  if (i === activeColIndex && getHeaders && getHeaders[i].ref.current !== null) {
+	// 	    // Calculate the column width
+	//      if (getHeaders[i]){
+	// 	    const newWidth =   (e.clientX - getHeaders[i].ref.current.offsetLeft)
+	//        console.log(`e.clientX , getHeaders[i].ref.current.offsetLeft, newwidth `, e.clientX ,getHeaders[i].ref.current.offsetLeft, newWidth)
+	// 	   console.log(`ref.current`, getHeaders[i].ref.current)
+	//       if (newWidth >= 5 && newWidth !== getHeaders[i].ref.current.offsetWidth) {
+	//         console.log(`newWidth= `, newWidth )
+	// 	      // return `${width}px`;
+	//         	// Assign the px values to the table if changed
+	//   console.log(`tableElement.current.style.gridTemplateColumns `, tableElement.current.style.gridTemplateColumns )
+	// 	 if (tableElement.current)  {tableElement.current.style.gridTemplateColumns =
+	//     `${gridColumns.join(' ')}`}
+	// console.log(`tableElement.current.style.gridTemplateColumns modified`, tableElement.current.style.gridTemplateColumns )
+	// 	    }
+	// 	  }
+
+	// 	}})
+
+	// }, [activeColIndex, columns, colOrder]);
+
+	// const handle_mouseDown_resize= (index:number)=>{
+	//   console.log(`mouseDown on resize index ${index}`)
+	//   setActiveColIndex(index)
+	// }
+
+	// const  ColMouseUp_resize =useCallback(() => {
+	//     RemoveListeners();
+	//     setActiveColIndex(undefined);
+
+	// }, [setActiveColIndex, RemoveListeners]);
+
+	// function  RemoveListeners(){useCallback(() => {
+	//   window.removeEventListener('mousemove', ColMouseMove_resize);
+	//   window.removeEventListener('mouseup', ColMouseUp_resize);
+	// }, [ColMouseMove_resize])}
+
+	// console.log(`activeColIndex`, activeColIndex)
+	// useEffect(() => {
+	//   // console.log(`inside useEffect activeColIndex=`, activeColIndex)
+	//   if (activeColIndex !== undefined) {
+	//     console.log(`window mousemove, mouseup watch started`)
+	//     window.addEventListener('mousemove', ColMouseMove_resize);
+	//     window.addEventListener('mouseup', ColMouseUp_resize);
+	//   }
+	// },[activeColIndex,ColMouseMove_resize,ColMouseUp_resize])
+
+
+  //  console.log(`measure`, measurements(activeColHeader.current)
+	const InfoLine =
+		(activeColIndex !== undefined )
+			? `Mouse is at  ${mousePosition.x}:${mousePosition.y} `// - ref left =${activeColRef?.offsetLeft || 'N/A'} ref offsetwidth=${activeColRef?.offsetWidth|| 'N/A'}`
+			: 'Mouse not dragging'
+console.log(`activeColRef`, activeColRef)
+	console.log(
+		`ref  Left`,
+		(activeColIndex !==undefined  ) && activeColRef?.current?.offsetLeft
+	)
+	return (
+		<div>
+		<TanTableResize/>
+			<p>{InfoLine}</p>
+			{/* <pre>{JSON.stringify(measurements)}</pre> */}
+			<table ref={tableElement} className='tableList-wrapper tableList'>
+				<HeaderRow/>
+				{tRows}
+			</table>
+		</div>
+	)
+}
+
+export default TaskList

@@ -1,0 +1,55 @@
+.tableList-wrapper {
+  margin-bottom: 25px;
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden; /* Clips any scrollbars that appear */
+}
+
+.tableList {
+  // width: 100%;
+  overflow: auto; /* Allow scrolling within the table */
+}
+
+.tableList_th {
+  position: relative;
+  font-size: 18px;
+}
+
+.tableList th,
+.tableList td {
+  text-align: left;
+  padding: 16px 20px;
+}
+
+.tableList th span,
+.tableList td span {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  display: block;
+  resize:horizontal
+}
+
+.tableList tr td {
+  border-top: 1px solid #ccc;
+}
+.tableList .resize-handle {
+  display: block;
+  position: absolute;
+  cursor: col-resize;
+  width: 7px;
+  right: 0;
+  top: 0;
+  z-index: 1;
+  border-right: 2px solid transparent;
+  background-color: darkred;
+}
+
+.tableList .resize-handle:hover {
+   background-color:rgb(37, 241, 10);
+  border-color: #ccc;
+}
+
+ .tableList .resize-handle.active {
+  border-color: #517ea5;
+}

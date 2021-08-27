@@ -8,6 +8,8 @@ import React, {
 	useRef,
 	useState,
 	ReactNode,
+	KeyboardEvent,
+	useEffect
 } from 'react'
 import * as _ from 'lodash'
 
@@ -45,6 +47,8 @@ import {
 	tasksUpsertOne,
 	getNextTaskId,
 	getNextLinkId,
+	removeSelectedItem,
+	removeAllSelectedItems,
 } from './seqSlice'
 import { Link, Task, XY, SelTypes, ITaskDtl, ILayout } from './seqTypes'
 import styles from './Seq.module.scss'
@@ -64,6 +68,10 @@ import PortTriangle from './PortTriangle'
 import DrawPath from './DrawPath'
 import { JsxElement } from 'typescript'
 import MakeDrawLinks from './MakeDrawLinks'
+import { useClickOutside, useKeyboardEvent, useToggle } from '@react-hookz/web'
+import { options, string } from 'yargs'
+import TaskList from './TaskList'
+
 
 export const background = '#f3f3f3'
 
@@ -80,8 +88,16 @@ enum dragAction {
 	pan = 'pan',
 }
 
+	export const outPort_x = (taskItem: ITaskDtl, taskIndex: number) => {
+		const output = taskItem.start + taskItem.duration / 2
+		// console.log(`taskIndex @${taskIndex} ,  outPortx=${output} -`, taskItem)
+		return output
+	}
+
+
+
 export function Seq() {
-	const count = useAppSelector(selectCount)
+
 	const dispatch = useAppDispatch()
 	const [incrementAmount, setIncrementAmount] = useState('2')
 	const { vh, vw } = useViewport(/* object with options (if needed) */)
@@ -114,6 +130,32 @@ export function Seq() {
 	const mOverItem = useAppSelector(mouseOverItem)
 	const nextLinkId = useAppSelector(getNextLinkId)
 	const nextTaskId = useAppSelector(getNextTaskId)
+  const [toggledMousedDown, toggleMousedDown] = useToggle();
+
+	 const ClickOutSide = () => {
+    const ref = useRef(null);
+    useClickOutside(ref, () => {
+      window.alert('Clicked Outside');
+		toggleMousedDown()
+    })
+ }
+
+ const [keyInlist, setKeyInList] = useState<string[]>([]);
+
+ useKeyboardEvent(
+    true,
+    (e) => {
+      setKeyInList((l) => l.slice(-5).concat([e.key]));
+    },
+    [],
+   {event:'keyup',eventOptions: { passive: true } }
+		
+  )
+	
+
+  
+  
+ 
 	// linkEnts correctly interpreted as type Dictionary<Link> through as Dictionary<Link> but the
 	//useAppSelector appears to have a type if Dictionary<Link>|undefined (coming from Redux)
 	// console.log shows LinkEnts is giving a valid dictionary of objects
@@ -148,73 +190,94 @@ export function Seq() {
 		)
 	}
 
-	let taskDtl = useMemo(() => {
-		let taskD = new Map<number | string, ITaskDtl>()
+
+	let taskDtl:ITaskDtl[] = []
+	
 
 		const getTaskDEndTime = (taskId: EntityId) => {
-			if (taskId === undefined || taskD === undefined) return 0
+			if (taskId === undefined) alert('error in finding taskID')
 
-			const index =taskIds.indexOf(taskId)
+			const index = taskIds.indexOf(taskId)
 			const etime =
-				taskD?.get(index)?.start ||
-				0 + (taskD?.get(index)?.duration || 0) ||
-				0
-				console.log(`index ${index} -taskid ${taskId} -etime ${etime}`)
-			console.log(`index ${index} taskD.get `, taskD.get(index) ,taskD)
+				taskDtl[index]?.start || 0 + (taskDtl[index]?.duration || 0) || 0
+			console.log(`index ${index} -taskid ${taskId} -etime ${etime}`)
+			console.log(`index ${index} taskD.get `, taskDtl[index], taskDtl)
 			return etime
 		}
+
 		taskIds.map((taskid, index) => {
 			const ctask = taskEnts[taskid]
+			console.log(
+				`preparing taskDtl for index ${index} - taskId ${taskid} `,
+				ctask
+			)
 			//	console.log(`index ${index} - task`, taskid, ctask)
 			let fromTasks = linksAll.filter(
 				(link) =>
 					link.from == taskid &&
 					taskIds.indexOf(link.from) < taskIds.indexOf(link.to)
+				// from tasks only exist if they start from an earlier index
 			)
 
 			const retTasks = linksAll.filter(
 				(link) =>
 					link.to == taskid &&
 					taskIds.indexOf(link.from) > taskIds.indexOf(link.to)
-			) //.map(link=>link.from)
+				// retTasks only exist if they start from an later index
+			)
 
-			const toTasks = linksAll.filter((link) => link.to == taskid) //.map(link=>link.to)
+			const toTasks = linksAll.filter((link) => link.to == taskid)
 
 			//  get start time - only those earlier than current will have defined times so ignore undefined values
 			let startTime = 0
 			toTasks.map((link) => {
 				//const tDtl = 	(taskDtl && tid !==undefined&& taskDtl.hasOwnProperty(tid))? taskDtl[tid] :undefined
-				const item = taskD.get(link.from)
-				// console.log(`fromtasks.map item`, item)
-				const endtime: number = (item?.start || 0) + (item?.duration || 0) || 0
+				const itemIndex = taskDtl.findIndex((item) => item.id === link.from)
+				console.log(`fromTasks.map item`, itemIndex, taskDtl[itemIndex])
+				// const endtime: number = ((taskD[itemIndex]?.start || 0) + (taskD[itemIndex]?.duration || 0) )
+				const endtime: number =
+					itemIndex >= 0
+						? (taskDtl[itemIndex].start || 0) + (taskDtl[itemIndex].duration || 0)
+						: 0
+				// findIndex returns -1 if not found
 				if (endtime && endtime > startTime) startTime = endtime
 			})
 
-			// now sort froms based on starttimes + duration of predecessor - earliest is last
-			console.log(`fromTasks`, fromTasks)
-			
-			fromTasks.sort(
-				(aTask, bTask) =>
-				(	getTaskDEndTime(aTask.from) - getTaskDEndTime(bTask.from))*-1.0
-			)
+			taskDtl.push({
+				id: ctask?.id || 0,
+				name: ctask?.name || '',
+				duration: ctask?.duration || 0,
+				index: index,
+				froms: fromTasks,
+				rets: retTasks,
+				tos: toTasks,
+				start: startTime,
+			})
+		})
+		console.log(`taskDtl`, taskDtl)
+		// now need to sort to arrows so the index is based on start time of predecessor link.from
+		taskDtl.forEach((taskitem) => {
+			if (taskitem.tos.length > 1) {
+				// now sort froms based on starttimes + duration of predecessor - earliest is last
+				console.log(
+					`toTasks ${taskitem.id}`)
+					taskitem.tos.map((link,index )=>
+						console.log(
+							`index ${index} Link ${link.id} - start time`,
+							link,
+							getTaskDEndTime(link.from)
+						)
+					)
+				
 
-			if (ctask !== undefined && taskid !== undefined) {
-				taskD.set(taskid, {
-					id: ctask.id,
-					name: ctask.name,
-					duration: ctask.duration,
-					index: index,
-					froms: fromTasks,
-					rets: retTasks,
-					tos: toTasks,
-					start: startTime,
-				})
+				taskitem.tos.sort(
+					(aTask, bTask,) =>
+						(outPort_x(taskDtl[aTask.from],0) - outPort_x(taskDtl[bTask.from],0)) * -1.0
+				)
+				console.log(`toTasks  after sort at id ${taskitem.id}`, taskitem.tos)
 			}
 		})
-		console.log(`taskDtl`, taskD)
 
-		return taskD
-	}, [taskIds, taskEnts, linksAll])
 
 	//end of taskDtl
 	// bounds
@@ -314,6 +377,7 @@ export function Seq() {
 						}
 						console.log(`set dragstart at`, ppoint, ` from `, e.target)
 						setdragActionActive(dragAction.dragLine)
+						toggleMousedDown()
 					}
 				} else {
 					if (typeof x === 'number' && typeof y === 'number') {
@@ -343,14 +407,14 @@ export function Seq() {
 				point && setMousepos(point)
 			}
 			// check if link avail
-			const endItem = Math.floor(yScale.invert(mousepos?.y || 0))
-			const startItem = Math.floor(yScale.invert(dragStart?.y || 0))
+			const endIndex = Math.floor(yScale.invert(mousepos?.y || 0))
+			const startIndex = Math.floor(yScale.invert(dragStart?.y || 0))
 			let isLinkPossible = false
 
-			const startTask = taskDtl.get(taskIds[startItem])
-			const endTask = taskDtl.get(taskIds[endItem])
+			const startTask = taskDtl[taskIds.indexOf(startIndex)]
+			const endTask = taskDtl[taskIds.indexOf(endIndex)]
 			isLinkPossible =
-				startItem < endItem &&
+				startIndex < endIndex &&
 				endTask?.froms.filter(
 					(link) => linkEnts[link.id]?.from === startTask?.id
 				).length === 0
@@ -372,9 +436,9 @@ export function Seq() {
 				//  if (linkEnts[newID]) {
 				// 	 while
 				// 	 console.log(`LinkID already in use`, newID, ' in ', linkIds)}
-				console.log(
-					`about to dispatch addlink id: ${nextLinkId}from ${startTask.name} to ${endTask.name}`
-				)
+				// console.log(
+				// 	`about to dispatch addlink id: ${nextLinkId}from ${startTask.name} to ${endTask.name}`
+				// )
 
 				dispatch(
 					linksAddOne({
@@ -387,7 +451,8 @@ export function Seq() {
 
 				// now  cancel drag
 				setDragStart(undefined)
-				selInfo && dispatch(toggleSelectedItem(selInfo))
+				// clear selected items
+				dispatch(removeAllSelectedItems)
 			}
 
 			// if (dragActionActive===dragAction.canCreateLink && !isLinkPossible)	setdragActionActive(dragAction.none)
@@ -571,10 +636,12 @@ export function Seq() {
 		//useMemo(() => {
 		const output = useMemo(
 			() =>
-				taskIds.map((id, index) => {
+				taskDtl.map((taskItem, index) => {
+					// taskIds.map((id, index) => {
 					//if (id ===undefined) {returnnull)}
 					//	console.log(`taskEnts, id`, taskEnts, taskEnts[id])
-					const taskItem = taskDtl.get(id)
+					// const taskItem = taskDtl.find(item=>item.id===id)
+					//const taskItem = taskDtl[index]
 					if (taskItem === undefined) {
 						return <text>{`Undefined item at index ${index}`}</text>
 					}
@@ -593,7 +660,7 @@ export function Seq() {
 						e: React.MouseEvent,
 						selInfo?: ISelItem
 					) => {
-						console.log(`Mouseup on taskbar `, selInfo)
+						// console.log(`Mouseup on taskbar `, selInfo)
 						handleSvgMouseUp(e, selInfo)
 					}
 
@@ -636,20 +703,26 @@ export function Seq() {
 		// onMouseEnter && onMouseEnter(e)
 	}
 
+const handleKeyPressApp=(e:React.KeyboardEvent<HTMLElement>) =>{
+	if (e.key === 'Escape') console.log(`Escape`, e.key)
+}
+
+
 	const DrawLinks = MakeDrawLinks(
 		taskDtl,
 		iLayout,
 		xScale,
 		yScale,
 		handleMouseEnter,
-		handleMouseLeave
+		handleMouseLeave,
+
 	) // ,[taskDtl,iLayout,xScale,yScale] )
 
 	const DrawInPorts = () => {
 		const map2 = taskDtl.forEach(
 			(task) =>
 				task.tos.map((taskItem, index) => {
-					let targetTask = taskDtl.get(taskItem.from)
+					let targetTask = taskDtl.find((item) => item.id === taskItem.from)
 					if (targetTask === undefined) return null
 					const selInfo: ISelItem = {
 						type: 'taskPortIn',
@@ -695,25 +768,6 @@ export function Seq() {
 
 		return <>{map2}</>
 	}
-	// const inPath=taskDtl.froms.map((port,index)=>
-	//  const path ={
-
-	//  }
-	// return(<DrawLine
-	// className='PortInPath'
-	// data={path}
-	// 		x={(data) => (data.x)}
-	// 		y={(data) => (data.y)}
-	// 		stroke={color || 'orange'}
-	// 		fill='none'
-	// 		strokeWidth='2'
-	// 	x={start-iLayout.portTriLength}
-	// 	y={ytop+0.2* barHeight+iLayout.barSpacing*iLayout.portLinkVoffset*index}
-	// 	width={iLayout.portTriLength*iLayout.barSpacing}
-	// 	height={iLayout.portTriLength/2*iLayout.barSpacing}
-	// 	fill={'green'}
-	// 	/>)
-	// 	)
 
 	const txtMouseOver = mOverItem
 		? `Mouse Over type: ${mOverItem.type} - mouseOverid: ${mOverItem.id} - sname: ${mOverItem.sname}`
@@ -723,7 +777,9 @@ export function Seq() {
 	// -- render output starts
 	return (
 		<DragContext.Provider value={DragContextItem}>
-			<div className='seq graphContainer'>
+			<div className='seq graphContainer'
+			onKeyUp={handleKeyPressApp}
+			>
 				<p>{dragposTxt} </p>
 				<p>{mouseposTxt} </p>
 				<p>{txtMouseOver}</p>
@@ -734,6 +790,16 @@ export function Seq() {
 				</ul>
 				<p>xScale: {(xScale(2) - xScale(1)).toFixed(2)}</p>
 				<p>Selected item: </p>
+				  <div>
+      <div>Press any keyboard keys and they will appear below.</div>
+      <p>You have pressed</p>
+      <ul>
+        {keyInlist.map((k, i) => (
+          
+          <li key={`${i}_${k}`}>{k}</li>
+        ))}{' '}
+      </ul>
+    </div>
 				<svg
 					width={
 						iLayout.graphWidth + iLayout.graphPadLeft + iLayout.graphPadRight
@@ -774,6 +840,7 @@ export function Seq() {
 						Time (Sec)
 					</text>
 				</svg>
+			<TaskList/>
 			</div>
 		</DragContext.Provider>
 	)

@@ -162,6 +162,9 @@ if (index>=0)
 removeSelectedItem:(state,action: PayloadAction<ISelItem>)=>{
   state.selectedItems.filter(item=>item.sname!==action.payload.sname)
 },
+removeAllSelectedItems:(state,action: PayloadAction<void>)=>{
+  state.selectedItems=[]
+},
 
 // const tasksAddOne=(state,entity){tasksAdapter.addOne(state.tasks,entity)},
 // tasksUpsertOne((state,action)={tasksAdapter.upsertOne(state.tasks,payload.task)},
@@ -202,7 +205,7 @@ removeSelectedItem:(state,action: PayloadAction<ISelItem>)=>{
 });
 
 export const { increment, decrement, incrementByAmount,setNextLinkId,linksAddOne ,linksUpsertOne,tasksUpsertOne,resetMouseOverItem,
-setMouseOverItem ,toggleSelectedItem,removeSelectedItem} = seqSlice.actions;
+setMouseOverItem ,toggleSelectedItem,removeSelectedItem,removeAllSelectedItems} = seqSlice.actions;
 
 
 // The function below is called a selector and allows us to select a value from

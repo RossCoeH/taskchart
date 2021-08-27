@@ -6,6 +6,13 @@ import './App.css';
 //  imported viewport listener from:
 // https://blog.logrocket.com/developing-responsive-layouts-with-react-hooks/
 //--------------------
+import { useEffect } from 'react';
+import TestHover from './features/seq/TestHover';
+/**
+ * useKeyPress
+ * @param {string} key - the name of the key to respond to, compared against event.key
+ * @param {function} action - the action to perform on key press
+ */
 
 //--------------------
 function App() {
@@ -20,6 +27,7 @@ function App() {
         </p>
          </header>
          <Seq></Seq>
+         <TestHover/>
     </div>
     //  </ViewportProvider>
   );

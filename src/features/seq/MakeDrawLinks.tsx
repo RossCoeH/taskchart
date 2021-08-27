@@ -13,24 +13,23 @@ import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import './MakeDrawLinks.scss'
 
 import clsx from 'clsx'
+import { isNamedTupleMember } from 'typescript'
+import{ outPort_x }from './Seq'
 
 const MakeDrawLinks = (
-	taskDtl: Map<string | number, ITaskDtl>,
+	taskDtl:  ITaskDtl[],
 	iLayout: ILayout,
 	xScale: any,
 	yScale: any,
 	// taskEnts: Dictionary<Task>,
 	handleMouseEnter: (selInfo: ISelItem) => void,
 	handleMouseLeave: (selInfo: ISelItem) => void,
+//	outPort_x:(taskItem: ITaskDtl, taskIndex: number) =>number,
 	
 ) => {
 	const taskIds = useAppSelector((state) => state.seq.tasks.ids)
   const selectedList=useAppSelector(selectedItems)
-	const outPort_x = (taskItem: ITaskDtl, taskIndex: number) => {
-		const output = taskItem.start + taskItem.duration / 2
-		// console.log(`taskIndex @${taskIndex} ,  outPortx=${output} -`, taskItem)
-		return output
-	}
+	
 	const dispatch = useAppDispatch()
 
 
@@ -61,16 +60,16 @@ const MakeDrawLinks = (
 		// top level per task
 		if (id === undefined) return null
 
-		const taskOutItem = taskDtl.get(id)
-		if (taskOutItem === undefined) {
+		const taskFromItem = taskDtl.find(item=>item.id===id)
+		if (taskFromItem === undefined) {
 			console.log(`Undefined taskOutitem at index ${indexPortIdFrom}`)
 			return null
 		}
 
 		// work through inner normal
-		const innerMap = taskOutItem.froms.map((link, indexPortIdFrom) => {
+		const innerMap = taskFromItem.froms.map((link, indexPortIdFrom) => {
 			// find to Task and matchind index
-			const taskToItem = taskDtl.get(link.to)
+			const taskToItem = taskDtl.find(item=>item.id===link.to)
 			if (taskToItem === undefined) {
 				console.log(`Undefined taskToitem at index ${indexPortIdFrom}`)
 				return null
@@ -82,7 +81,7 @@ const MakeDrawLinks = (
 				taskToItem?.tos.findIndex((item) => link.id === item.id) || 0
 
 			const ppt0 = {
-				x: outPort_x(taskOutItem, indexTaskIdFrom),
+				x: outPort_x(taskFromItem, indexTaskIdFrom),
 				y: outPort_y(indexTaskIdFrom),
 			}
 			const pptEnd = {
@@ -126,13 +125,13 @@ const MakeDrawLinks = (
 				const triHeight = yScale(iLayout.portTriHeight)
 				const triLength = yScale(iLayout.portTriLength)
 				const nameStart = `Link Start -Task ${
-					taskDtl.get(link.from)?.name
-				} to ${taskDtl.get(link.to)?.name}`
-				const nameLink = `Link -Task ${taskDtl.get(link.from)?.name} to ${
-					taskDtl.get(link.to)?.name
+					taskFromItem?.name
+				} to ${taskToItem?.name}`
+				const nameLink = `Link -Task ${taskFromItem?.name} to ${
+					taskToItem.name
 				}`
-				const nameEnd = `Link End -Task ${taskDtl.get(link.from)?.name} to ${
-					taskDtl.get(link.to)?.name
+				const nameEnd = `Link End -Task ${taskFromItem?.name} to ${
+					taskToItem?.name
 				}`
 				const selInfoS = {
 					type: 'LinkStart',
@@ -246,10 +245,10 @@ const onMouseUp= (selInfo:ISelItem):void=>{
 
 		// now do return loops
 
-		const retMap = taskOutItem.rets.map((link, indexPortIdFrom, retarray) => {
+		const retMap = taskFromItem.rets.map((link, indexPortIdFrom, retarray) => {
 			// find to Task and matchind index
-			const taskToItem = taskDtl.get(link.to)
-			const taskFromItem = taskDtl.get(link.from)
+			const taskToItem = taskDtl.find(item=>(item.id===link.to))
+			const taskFromItem = taskDtl.find(item=>(item.id===link.from))
 			if (taskToItem === undefined) {
 				console.log(`Undefined taskToitem at index ${indexPortIdFrom}`)
 				return null
@@ -259,10 +258,10 @@ const onMouseUp= (selInfo:ISelItem):void=>{
 				return null
 			}
 			const indexTaskIdFrom =
-				taskIds.findIndex((item) => link.from === item) || 0
-			const indexTaskIdTo = taskIds.findIndex((item) => link.to === item) || 0
+				taskIds.findIndex(item => (link.from === item)) 
+			const indexTaskIdTo = taskIds.findIndex((item) => link.to === item) 
 			const indexPortTo =
-				taskToItem?.tos.findIndex((item) => link.id === item.id) || 0
+				taskToItem?.tos.findIndex(item => (link.id === item.id))
 
 			const ppt0 = {
 				x: taskFromItem.start + taskFromItem.duration,
@@ -316,13 +315,13 @@ const onMouseUp= (selInfo:ISelItem):void=>{
 				const triHeight = yScale(iLayout.portTriHeight)
 				const triLength = yScale(iLayout.portTriLength)
 				const nameStart = `Link Start -Task ${
-					taskDtl.get(link.from)?.name
-				} to ${taskDtl.get(link.to)?.name}`
-				const nameLink = `Link -Task ${taskDtl.get(link.from)?.name} to ${
-					taskDtl.get(link.to)?.name
+					taskFromItem?.name
+				} to ${taskToItem?.name}`
+				const nameLink = `Link -Task ${taskFromItem?.name} to ${
+					taskToItem?.name
 				}`
-				const nameEnd = `Link End -Task ${taskDtl.get(link.from)?.name} to ${
-					taskDtl.get(link.to)?.name
+				const nameEnd = `Link End -Task ${taskFromItem?.name} to ${
+					taskToItem?.name
 				}`
 
 				const trianglePoints = [
