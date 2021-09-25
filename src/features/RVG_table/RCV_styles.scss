@@ -1,0 +1,28 @@
+body {
+  font-family: sans-serif;
+  background: #fff;
+}
+
+.app {
+  padding: 0 1rem;
+}
+
+p {
+  color: #333;
+}
+
+.outer {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  resize: horizontal; //adds corner tab
+}
+
+.item {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  //resize: horizontal; //adds corner tab
+  &.dark {
+    background: #e5e5e5;
+  }
+}

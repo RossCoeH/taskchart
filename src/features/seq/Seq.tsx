@@ -71,6 +71,8 @@ import MakeDrawLinks from './MakeDrawLinks'
 import { useClickOutside, useKeyboardEvent, useToggle } from '@react-hookz/web'
 import { options, string } from 'yargs'
 import TaskList from './TaskList'
+import RCV_Grid from '../RVG_table/RCV_grid'
+//import MyTable from '../Tables/MyTable'
 
 
 export const background = '#f3f3f3'
@@ -153,34 +155,6 @@ export function Seq() {
   )
 	
 
-  
-  
- 
-	// linkEnts correctly interpreted as type Dictionary<Link> through as Dictionary<Link> but the
-	//useAppSelector appears to have a type if Dictionary<Link>|undefined (coming from Redux)
-	// console.log shows LinkEnts is giving a valid dictionary of objects
-	//how do I typeguard the dictionary so that I can use .map
-
-	//  const filtered = (ids: EntityId[], entities: EntityState<T>): any =>
-	//         ids.map((id) => (entities as <T>)[id])
-
-	// 	if (linkEnts!== undefined){
-	// 		const output1 = linkEnts.map(link:any=>link.from)||[]
-	// 		const output2 = linkEnts?.map(link=>link.from)
-	// 	}
-	//  both output1  & output2 have the same error: const linkEnts: Dictionary<Link>
-	// Object is possibly 'undefined'.ts(2532)
-	// Cannot invoke an object which is possibly 'undefined'.ts(2722)
-
-	// then typing for link is
-	// 	export interface Link{
-	//   id:number,
-	//   from:number
-	//   to:number
-	// }
-
-	//console.log(`imported initTasks`, EntArrayToAdapter(initTasksArray))
-	// accessors
 	const time = (d: Task) => d.duration
 
 	// helper function for undefined object in dictionaries stack overflow
@@ -200,17 +174,17 @@ export function Seq() {
 			const index = taskIds.indexOf(taskId)
 			const etime =
 				taskDtl[index]?.start || 0 + (taskDtl[index]?.duration || 0) || 0
-			console.log(`index ${index} -taskid ${taskId} -etime ${etime}`)
-			console.log(`index ${index} taskD.get `, taskDtl[index], taskDtl)
+		// console.log(`index ${index} -taskid ${taskId} -etime ${etime}`)
+			// console.log(`index ${index} taskD.get `, taskDtl[index], taskDtl)
 			return etime
 		}
 
 		taskIds.map((taskid, index) => {
 			const ctask = taskEnts[taskid]
-			console.log(
-				`preparing taskDtl for index ${index} - taskId ${taskid} `,
-				ctask
-			)
+			// console.log(
+			// 	`preparing taskDtl for index ${index} - taskId ${taskid} `,
+			// 	ctask
+			// )
 			//	console.log(`index ${index} - task`, taskid, ctask)
 			let fromTasks = linksAll.filter(
 				(link) =>
@@ -233,7 +207,7 @@ export function Seq() {
 			toTasks.map((link) => {
 				//const tDtl = 	(taskDtl && tid !==undefined&& taskDtl.hasOwnProperty(tid))? taskDtl[tid] :undefined
 				const itemIndex = taskDtl.findIndex((item) => item.id === link.from)
-				console.log(`fromTasks.map item`, itemIndex, taskDtl[itemIndex])
+				// console.log(`fromTasks.map item`, itemIndex, taskDtl[itemIndex])
 				// const endtime: number = ((taskD[itemIndex]?.start || 0) + (taskD[itemIndex]?.duration || 0) )
 				const endtime: number =
 					itemIndex >= 0
@@ -259,7 +233,7 @@ export function Seq() {
 		taskDtl.forEach((taskitem) => {
 			if (taskitem.tos.length > 1) {
 				// now sort froms based on starttimes + duration of predecessor - earliest is last
-				console.log(
+/* 				console.log(
 					`toTasks ${taskitem.id}`)
 					taskitem.tos.map((link,index )=>
 						console.log(
@@ -267,14 +241,14 @@ export function Seq() {
 							link,
 							getTaskDEndTime(link.from)
 						)
-					)
+					) */
 				
 
 				taskitem.tos.sort(
 					(aTask, bTask,) =>
 						(outPort_x(taskDtl[aTask.from],0) - outPort_x(taskDtl[bTask.from],0)) * -1.0
 				)
-				console.log(`toTasks  after sort at id ${taskitem.id}`, taskitem.tos)
+			//	console.log(`toTasks  after sort at id ${taskitem.id}`, taskitem.tos)
 			}
 		})
 
@@ -793,12 +767,14 @@ const handleKeyPressApp=(e:React.KeyboardEvent<HTMLElement>) =>{
 				  <div>
       <div>Press any keyboard keys and they will appear below.</div>
       <p>You have pressed</p>
+				{/* <RCV_Grid/> */}
       <ul>
         {keyInlist.map((k, i) => (
           
           <li key={`${i}_${k}`}>{k}</li>
         ))}{' '}
       </ul>
+		
     </div>
 				<svg
 					width={
@@ -828,7 +804,8 @@ const handleKeyPressApp=(e:React.KeyboardEvent<HTMLElement>) =>{
 						onMouseUp={handleSvgMouseUp}
 						onMouseMove={handleSvgMouseMove}
 					/>
-					<DrawRectGrid />
+					{/* <DrawRectGrid /> */}
+					{/* <MyTable/> */}
 					<TaskBars />
 					{/* <DrawInPorts /> */}
 					{/* 
@@ -840,7 +817,7 @@ const handleKeyPressApp=(e:React.KeyboardEvent<HTMLElement>) =>{
 						Time (Sec)
 					</text>
 				</svg>
-			<TaskList/>
+		
 			</div>
 		</DragContext.Provider>
 	)

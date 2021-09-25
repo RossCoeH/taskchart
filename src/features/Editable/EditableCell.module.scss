@@ -1,0 +1,9 @@
+
+.EditableCell .EditableCell {
+  border: dodgerblue solid 1;
+  border-radius: 2px;
+}
+.EditableCell .EditableCell .hasError{
+  border-color: crimson;
+  background-color: rgb(247, 197, 197);
+}

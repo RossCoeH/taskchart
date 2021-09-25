@@ -6,30 +6,6 @@ import {initTasksArray,initLinksArray} from './initValues'
 import { formatDiagnostic } from 'typescript';
 import { useAppDispatch } from '../../app/hooks';
 
-// export interface SeqState {
-//   value: number;
-//   status: 'idle' | 'loading' | 'failed';
-// }
-
-
-
-// export interface SeqState{
-//   value:number,
-//   status: string
-//   tasks: EntityAdapter<Task>
-//   links: EntityAdapter<Link>
-// }
-
-
-
-
-
-// const initialState : {
-//   value:0,
-//   status: 'idle',
-//   tasks: tasksAdapter.getInitialState({}),
-//   links linksAdapter.getInitialState([]),
-// }
 
 // The function below is called a thunk and allows us to perform async logic. It
 // can be dispatched like a regular action: `dispatch(incrementAsync(10))`. This

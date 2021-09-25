@@ -17,8 +17,9 @@ import { useSelector } from 'react-redux'
 import { useAppSelector } from '../../app/hooks'
 import { selTasks } from './seqSlice'
 import { Task } from './seqTypes'
-import './TaskList.scss'
 import TanTableResize from './TanTableResize'
+import './TaskList.scss'
+
 
 interface Icol {
 	Header: string
@@ -290,7 +291,7 @@ console.log(`activeColRef`, activeColRef)
 	)
 	return (
 		<div>
-		<TanTableResize/>
+	<TanTableResize/>
 			<p>{InfoLine}</p>
 			{/* <pre>{JSON.stringify(measurements)}</pre> */}
 			<table ref={tableElement} className='tableList-wrapper tableList'>

@@ -3,6 +3,7 @@
   border-radius: 6px;
   background: #fff;
   overflow: hidden; /* Clips any scrollbars that appear */
+  box-sizing: border-box;
 }
 
 .tableList {
@@ -21,8 +22,8 @@
   padding: 16px 20px;
 }
 
-.tableList th span,
-.tableList td span {
+.tableList th ,
+.tableList td  {
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -32,15 +33,22 @@
 
 .tableList tr td {
   border-top: 1px solid #ccc;
+  padding-left: 8px;
 }
 .tableList .resize-handle {
-  display: block;
-  position: absolute;
+  box-sizing: border-box;
+  display: inline-block;
+  position: relative;
   cursor: col-resize;
-  width: 7px;
+  min-width: 12px;
+  width: 12px;
+  padding:1px;
+//  height:100%;
+height:16px;
+ min-height: 6px;
   right: 0;
   top: 0;
-  z-index: 1;
+  z-index: 10;
   border-right: 2px solid transparent;
   background-color: darkred;
 }
