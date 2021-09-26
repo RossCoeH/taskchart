@@ -228,7 +228,7 @@ export function Seq() {
 				start: startTime,
 			})
 		})
-		console.log(`taskDtl`, taskDtl)
+//		console.log(`taskDtl`, taskDtl)
 		// now need to sort to arrows so the index is based on start time of predecessor link.from
 		taskDtl.forEach((taskitem) => {
 			if (taskitem.tos.length > 1) {

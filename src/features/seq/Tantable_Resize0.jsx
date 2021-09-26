@@ -6,6 +6,7 @@ import { selTasks } from './seqSlice.ts'
 import classes from './TanTableResize.module.scss'
 import clx from 'classnames'
 
+
 // function Table(props) {
 const TanTableResize0 = (props) => {
 	const data = useAppSelector(selTasks.selectAll) || []
@@ -13,18 +14,28 @@ const TanTableResize0 = (props) => {
 	const [isEditing, setIsEditing] = React.useState(false)
 	console.log(`tasks as data`, data)
 
+// create a validation manager receiving row and field
+
+
+
 	// Create an editable cell renderer
 	const EditableCell = ({
 		value: initialValue,
 		row: { index },
 		column: { id },
+		cell,
+		getCellProps,
+		instance,
 		updateMyData, // This is a custom function that we supplied to our table instance
 		editable,
 	}) => {
 		// We need to keep and update the state of the cell normally
+		
 		const [value, setValue] = React.useState(initialValue)
 		const [isEditing, setIsEditing] = React.useState(false)
-		console.log(`Starting Cell edit -row ${index} column ${id} = ${value}`)
+		console.log(`Starting Cell edit -row ${index} column ${id} = ${value}, row : ${index} - cell`, cell)
+	
+		// console.log(cellprops,...cell.getCellProps())
 		// If the initialValue is changed external, sync it up with our state
 		React.useEffect(() => {
 			setValue(initialValue)
@@ -44,6 +55,7 @@ const TanTableResize0 = (props) => {
 				// updateMyData(index, id, value)
 				console.log(`new value `, value, 'row', index, 'column', id)
 				setIsEditing(false)
+					// console.log(`table instance`,  ...getCellProps())
 			}
 		}
 			if (!isEditing) 

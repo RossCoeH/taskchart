@@ -29,8 +29,6 @@ function App() {
     // <ViewportProvider >
     <div className="App">
       <header className="App-header">
-        {/* <img src={logo} className="App-logo" alt="logo" />
-        <Counter /> */}
         <p>
           My Chart 4
         </p>
@@ -38,13 +36,9 @@ function App() {
          <TabulatorGrid1/>
          {/* <TabulatorTableExample/> */}
          <TabulatorTable/>
-         <TanTableResize0/>
-         {/* <Rectabular/> */}
-      
+         {/* <TanTableResize0/> */}
          	{/* <MyTable /> */}
-           {/* <GrommetTable/> */}
-           {/* <MuiGrid/> */}
-        <Seq></Seq>
+        {/* <Seq></Seq> */}
          {/* <TestHover/> */}
     </div>
     //  </ViewportProvider>

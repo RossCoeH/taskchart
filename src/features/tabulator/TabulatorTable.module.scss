@@ -1,0 +1,15 @@
+
+.input{
+ 
+  border-radius: 3px;
+  border-style: solid; 
+  border-color:  rgb(61, 83, 61);
+  
+  :focus{border-color: dodgerblue;}
+}
+
+.input[type="number"]::-webkit-inner-spin-button,
+.input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
