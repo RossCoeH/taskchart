@@ -10,7 +10,7 @@ import { scaleLinear, BarRounded } from '@visx/visx'
 import PortDot from './PortDot'
 import PortTriangle from './PortTriangle'
 import { DragContext } from './dragContext'
-import { useAppDispatch, useAppSelector } from '../../app/hooks'
+import { useAppDispatch, useAppSelector } from '../../app/hooks/hooks'
 import {
 	ISelItem,
 	mouseOverItem,

@@ -1,6 +1,6 @@
 import React, { MouseEventHandler, PropsWithChildren, ReactElement, useMemo } from 'react'
 import { useTable, useBlockLayout, useResizeColumns, ColumnWithLooseAccessor, TableInstance, Row, TableOptions, HeaderProps, useColumnOrder, usePagination, useRowSelect, Meta, HeaderGroup, useFlexLayout, ColumnInstance } from 'react-table'
-import { useAppSelector } from '../../app/hooks'
+import { useAppSelector } from '../../app/hooks/hooks'
 //import makeData from './MakeData.js'
 import { selTasks } from './seqSlice'
 import { Task } from './seqTypes'

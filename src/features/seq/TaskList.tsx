@@ -14,7 +14,7 @@ import React, {
 import { ReactNode } from 'react'
 import { useSelector } from 'react-redux'
 // import { Container, Section, Bar } from 'react-simple-resizer'
-import { useAppSelector } from '../../app/hooks'
+import { useAppSelector } from '../../app/hooks/hooks'
 import { selTasks } from './seqSlice'
 import { Task } from './seqTypes'
 import TanTableResize from './TanTableResize'

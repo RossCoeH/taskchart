@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTable, useBlockLayout, useResizeColumns } from 'react-table'
-import { useAppSelector } from '../../app/hooks.ts'
+import { useAppSelector } from '../../app/hooks/hooks.ts'
 //import makeData from './MakeData.js'
 import { selTasks } from './seqSlice.ts'
 import classes from './TanTableResize.module.scss'

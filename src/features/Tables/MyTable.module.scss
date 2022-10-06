@@ -1,192 +1,130 @@
-th .dragCell,
-td .dragCell {
-	background-color: rgb(114, 192, 192);
-	border-radius: 10%;
-	width: 20px;
-	height: 80%;
-	box-sizing: border-box;
-	align-self: center;
-	border: none;
-}
-/* .table{
-  display: grid;
-  width: 80vw;
-  grid-template-columns:
-    minmax(150px, 3fr)
-    minmax(150px, 1fr)
-    minmax(150px, 1fr)
-    minmax(150px, 1fr)
-    minmax(150px, 1fr);
-  // box-sizing :border-box;
-  // margin-block-start: 6px ;
-  // margin-block-end: 6px;
-  // margin-inline-start: 0;
-  // margin-inline-end: 0;
-  // overflow-x: hidden;
-  // overflow-y: hidden;
-table thead,
-table tbody,
-table tr{
-  display: contents; 
-}
 
-table td span {
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  display: block;
-  box-sizing: border-box;
-
-}
-
-}
-
-.td {
-  border:solid,2px,blueviolet
-}
-
-// .table th {
-//     flex: none;
-
-//   border:solid,2px,blueviolet;
-//   display: table-cell;
-//   // position: relative;
-//   font-size: 18px;
-//  // flex: 60 0 auto; width: auto; max-width: 60px;
-// }
-
-
-table tr td {
-  border-top: 1px solid #ccc;
-} */
-$borderOuter: solid brown 2px;
-$borderInner: 1px solid rgb(214, 214, 214);
-$borderInnerThick: 2px double rgb(126, 126, 126);
+$borderOuter: solid 3px dodgerblue;
+// $borderInner: 6px solid rgb(214, 214, 214);
+$borderInner: 1px solid dodgerblue;
+$stripeColor: rgb(242, 249, 240);
 table {
 	position: relative;
 	left: 30px;
 	width: fit-content;
-	display: grid;
+	display: table;
 	overflow: hidden;
 	grid-template-columns:
-		minmax(10px, auto)
-		minmax(10px, auto)
-		minmax(10px, auto)
-		minmax(10px, auto);
+		minmax(10px, 20px)
+		minmax(30px, 50px)
+		minmax(10px, 650px)
+		minmax(10px, 90px);
+		border-collapse: collapse;
+	border: $borderOuter;
 }
 
 tr {
-	display: table-row;
+	// display: block;
 	position: relative;
 }
 
-table thead td,
-thead {
-	border-left: $borderOuter 3px;
-	border-top: $borderOuter;
-	
+table thead {
+	display: table-row-group;
+	border-bottom: $borderOuter;
+	background-color: darken($stripeColor,8%);
+	tr {
+		border-bottom: $borderOuter;
+	}
 }
+tbody {
+	display: table-row-group;
+	tr:nth-of-type(2n) {
+		background-color: $stripeColor;
+	}
 
-table thead,
-table tbody,
-table tr {
-	display: contents;
-}
+	tr {
+		display: table-row;		
+	}
 
-table th {
+  theadcell{
 	position: relative;
 	font-size: 18px;
 	display: table-cell;
-	border-top: $borderOuter;
-	border-bottom: $borderOuter;
-  text-overflow: clip;
-}
-table .padCell {
-	margin-left: 3px;
 	text-overflow: ellipsis;
-}
-
-table th{
 	text-align: left;
-	min-width: 10px;
-	border-left: $borderInnerThick;
-  	padding-left: 0.5em; 
-}
+	min-width: 40px;
+	padding-left: 0.5em;
+	background-color: pink;
+ 	border-left: $borderInner;
+	} 
+	
+	th:first-of-type {
+		border-left: none;
+		border-right: $borderInner;
+	/* .span{
+		user-select: none;
+		pointer-events: none;
+	} */
+	}
+
+	
+	table .padCell {
+		//margin-left: 3px;
+		text-overflow: ellipsis;
+	}
 
 
-table td {
+ td {
 	text-align: left;
 	min-width: 10px;
 	border-left: $borderInner;
-  	padding-left: 0.5em; 
+	padding-left: 0.5em;
+  
+ }
+ td:first-child {
+		padding-left: 0;
+		border-left: none;
+	}
 }
 
-table tbody tr {
-	border-top: $borderInner;
-  :first-of-type {
-	border-top: none;
-  }
+.dragCell  {
+	background-color: rgba(114, 192, 192, 0.9);
+	border-radius: 10%;
+	box-sizing: border-box;
+	align-self: center;
+	border-left: none;
 }
 
-table td :first-child(1) {
-		border-left: $borderOuter;
-    }
-
-// table tr :nth-last-child() {
-// 		border-right: $borderOuter;
-// 	}
-
+.gripIcon {
+	color: darken($stripeColor,20%);
+}
 
 table th span,
 table td span {
 	white-space: nowrap;
 	text-overflow: ellipsis;
-	//overflow: hidden;
 	display: block;
 }
-
-// table tbody tr td {
-// 	border: inherit;
-// }
-
-
-table th:nth-last-of-type(1),
-table td:nth-last-of-type(1) {
-	border-right: $borderOuter;
-}
-
-table th:first-child,
-table td:first-child {
-	border-left: $borderOuter;
-}
-table tr:last-child >td,
-table td:last-child >td {
-	border-bottom: $borderOuter;
-}
-
-
-
 
 .resizehandle {
 	display: block;
 	position: absolute;
-	width: 2px;
-
+	min-width: 6px;
+	transform:translate(2px,0);
 	top: 0;
 	bottom: 0;
-	right: -1px;
+	right: 0px;
 	cursor: col-resize;
 	z-index: 10;
-	border-right: 2px solid transparent;
-	background-color: rgba(37, 9, 9, 0);
-}
-.resizehandle:hover {
-	background-color: rgb(37, 241, 10);
-	//  width:2px;
-	//right:-1px;
-	border-color: #ccc;
-}
-
-.resizehandle.active {
-	background-color: #517ea5;
+	background-color: transparent;
+	
+	.resizeAtMin .resizeAtMin   {
+		cursor: not-allowed;
+		background-color:rgb(163, 14, 84)
+	}
+	:hover {
+		background-color: rgb(37, 241, 10);
+	}
+	:active {
+		background-color: rgb(37, 241, 10);
+	
+	}
+	
+	
+	
 }

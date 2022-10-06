@@ -9,7 +9,7 @@ import {
 	EntityState,
 } from '@reduxjs/toolkit'
 import { toggleSelectedItem, ISelItem, mouseOverItem, selectedItems } from './seqSlice'
-import { useAppDispatch, useAppSelector } from '../../app/hooks'
+import { useAppDispatch, useAppSelector } from '../../app/hooks/hooks'
 import './MakeDrawLinks.scss'
 
 import clsx from 'clsx'

@@ -1,0 +1,284 @@
+import { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom'
+import { css } from '@linaria/core';
+import DataGrid, { SelectColumn, TextEditor, SelectCellFormatter } from 'react-data-grid/';
+import  { Column} from 'react-data-grid'
+import  { SortColumn } from 'react-data-grid/lib'
+// import { stopPropagation } from 'react-data-gri';
+import { exportToCsv, exportToXlsx, exportToPdf } from './exportUtils';
+import {Task} from '../../seq/seqTypes'
+import { useAppSelector } from '../../../app/hooks/hooks';
+import { selTasks } from '../../seq/seqSlice'
+import {style} from "typestyle"
+
+
+const toolbarClassname = css`
+  text-align: right;
+  margin-bottom: 8px;
+`;
+
+const dialogContainerClassname = css`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.1);
+
+  > dialog {
+    width: 300px;
+    > input {
+      width: 100%;
+    }
+
+    > menu {
+      text-align: right;
+    }
+  }
+`;
+
+const dateFormatter = new Intl.DateTimeFormat(navigator.language);
+const currencyFormatter = new Intl.NumberFormat(navigator.language, {
+  style: 'currency',
+  currency: 'eur'
+});
+
+function TimestampFormatter({ timestamp }: { timestamp: number }) {
+  return <>{dateFormatter.format(timestamp)}</>;
+}
+
+function CurrencyFormatter({ value }: { value: number }) {
+  return <>{currencyFormatter.format(value)}</>;
+}
+
+interface SummaryRow {
+  id: string;
+  totalCount: number;
+  yesCount: number;
+}
+
+interface Row extends Task{
+  id: number;
+  name: string;
+  duration: number;
+}
+interface ICol<T>{
+  key: keyof T;
+ name : string;
+ width:number;
+ frozen?:boolean;
+ resizeable?:boolean;
+ //editor?:ComponentType<EditorProps<Task, unknown>>>;
+// summaryFormatter?: Function;
+
+}
+
+const columns:ICol<Task>[]=[{
+      key: 'id',
+      name: 'ID',
+      width: 60,
+      frozen: true,
+      resizeable: false,
+      // summaryFormatter() {
+      //   return <strong>Total</strong>;
+      // }
+    },
+    {
+      key: 'name',
+      name: 'Task',
+      width: 120,
+      resizeable:true,
+    //  frozen: true,
+     // editor: TextEditor,
+   //   summaryFormatter({ row }) {
+   //     return <>{row.totalCount} records</>;
+      // }
+    },
+    {
+      key: 'duration',
+      name: 'Time',
+      width: 70,
+  //    editor: TextEditor
+    },
+
+]
+function getColumns(countries: string[]): readonly Column<ICol<Task>>[] {
+  return [
+    // SelectColumn,
+    {
+      key: 'id',
+      name: 'ID',
+      width: 60,
+      // frozen: true,
+      resizable: false,
+      // summaryFormatter() {
+      //   return <strong>Total</strong>;
+      // }
+    },
+    {
+      key: 'title',
+      name: 'Task',
+      width: 120,
+    //  frozen: true,
+     // editor: TextEditor,
+   //   summaryFormatter({ row }) {
+   //     return <>{row.totalCount} records</>;
+      // }
+    },
+    {
+      key: 'duration',
+      name: 'Time',
+      width: 70,
+  //    editor: TextEditor
+    },
+    
+    // {
+    //   key: 'country',
+    //   name: 'Country',
+    //   width: 180,
+      // editor: (p) => (
+      //   <select
+      //     autoFocus
+      //     className={'texteditor'}
+      //     value={p.row.country}
+      //     onChange={(e) => p.onRowChange({ ...p.row, country: e.target.value }, true)}
+      //   >
+      //     {countries.map((country) => (
+      //       <option key={country}>{country}</option>
+      //     ))}
+      //   </select>
+      // ),
+      // editorOptions: {
+      //   editOnClick: true
+      // }
+    // },
+    
+  ];
+}
+
+function rowKeyGetter(row: Row) {
+  return row.id;
+}
+
+
+// function createRows(): readonly Row[] {
+//   const now = Date.now();
+//   const rows: Row[] = [];
+
+//   for (let i = 0; i < 1000; i++) {
+//     rows.push({
+//       id: i,
+//       title: `Task #${i + 1}`,
+//       client: faker.company.companyName(),
+//       area: faker.name.jobArea(),
+//       country: faker.address.country(),
+//       contact: faker.internet.exampleEmail(),
+//       assignee: faker.name.findName(),
+//       progress: Math.random() * 100,
+//       startTimestamp: now - Math.round(Math.random() * 1e10),
+//       endTimestamp: now + Math.round(Math.random() * 1e10),
+//       budget: 500 + Math.random() * 10500,
+//       transaction: faker.finance.transactionType(),
+//       account: faker.finance.iban(),
+//       version: faker.system.semver(),
+//       available: Math.random() > 0.5
+//     });
+//   }
+
+//   return rows;
+// }
+
+export default function CommonFeatures() {
+ const rows=useAppSelector(selTasks.selectAll)
+
+  const [selectedRows, setSelectedRows] = useState<ReadonlySet<number>>(() => new Set());
+
+  // const countries = useMemo(() => {
+  //   return [...new Set(rows.map((r) => r.country))].sort(new Intl.Collator().compare);
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []);
+  // const columns = useMemo(() => getColumns(countries), [countries]);
+
+  // const summaryRows = useMemo(() => {
+  //   const summaryRow: SummaryRow = {
+  //     id: 'total_0',
+  //     totalCount: rows.length,
+  //     yesCount: rows.filter((r) => r.available).length
+  //   };
+  //   return [summaryRow];
+  // }, [rows]);
+
+  // const sortedRows = useMemo((): readonly Row[] => {
+  //   if (sortColumns.length === 0) return rows;
+
+  //   const sortedRows = [...rows];
+  //   sortedRows.sort((a, b) => {
+  //     for (const sort of sortColumns) {
+  //       const comparator = getComparator(sort.columnKey);
+  //       const compResult = comparator(a, b);
+  //       if (compResult !== 0) {
+  //         return sort.direction === 'ASC' ? compResult : -compResult;
+  //       }
+  //     }
+  //     return 0;
+  //   });
+  //   return sortedRows;
+  // }, [rows, sortColumns]);
+
+  const gridElement = (
+    <DataGrid
+      rowKeyGetter={rowKeyGetter}
+      columns={columns}
+      rows={rows}
+      defaultColumnOptions={{
+        // sortable: true,
+        resizable: true
+      }}
+      selectedRows={selectedRows}
+      onSelectedRowsChange={setSelectedRows}
+      // onRowsChange={setRows}
+      // sortColumns={sortColumns}
+      // onSortColumnsChange={setSortColumns}
+      // summaryRows={summaryRows}
+      className="fill-grid"
+    />
+  );
+
+  return (
+    <>
+      <div className={toolbarClassname}>
+        <ExportButton onExport={() => exportToCsv(gridElement, 'CommonFeatures.csv')}>
+          Export to CSV
+        </ExportButton>
+        <ExportButton onExport={() => exportToXlsx(gridElement, 'CommonFeatures.xlsx')}>
+          Export to XSLX
+        </ExportButton>
+        <ExportButton onExport={() => exportToPdf(gridElement, 'CommonFeatures.pdf')}>
+          Export to PDF
+        </ExportButton>
+      </div>
+      {gridElement}
+    </>
+  );
+}
+
+function ExportButton({
+  onExport,
+  children
+}: {
+  onExport: () => Promise<unknown>;
+  children: React.ReactChild;
+}) {
+  const [exporting, setExporting] = useState(false);
+  return (
+    <button
+      disabled={exporting}
+      onClick={async () => {
+        setExporting(true);
+        await onExport();
+        setExporting(false);
+      }}
+    >
+      {exporting ? 'Exporting' : children}
+    </button>
+  );
+}

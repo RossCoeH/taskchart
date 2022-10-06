@@ -24,7 +24,7 @@ import { GridRows, GridColumns, Grid } from '@visx/visx'
 import { localPoint } from '@visx/visx'
 import { Point } from '@visx/visx'
 import { useViewport } from 'react-viewport-hooks'
-import { useAppSelector, useAppDispatch } from '../../app/hooks'
+import { useAppSelector, useAppDispatch } from '../../app/hooks/hooks'
 import { initialLayout } from './initValues'
 import {
 	decrement,
@@ -188,14 +188,14 @@ export function Seq() {
 			//	console.log(`index ${index} - task`, taskid, ctask)
 			let fromTasks = linksAll.filter(
 				(link) =>
-					link.from == taskid &&
+					link.from === taskid &&
 					taskIds.indexOf(link.from) < taskIds.indexOf(link.to)
 				// from tasks only exist if they start from an earlier index
 			)
 
 			const retTasks = linksAll.filter(
 				(link) =>
-					link.to == taskid &&
+					link.to === taskid &&
 					taskIds.indexOf(link.from) > taskIds.indexOf(link.to)
 				// retTasks only exist if they start from an later index
 			)
@@ -207,7 +207,7 @@ export function Seq() {
 			toTasks.map((link) => {
 				//const tDtl = 	(taskDtl && tid !==undefined&& taskDtl.hasOwnProperty(tid))? taskDtl[tid] :undefined
 				const itemIndex = taskDtl.findIndex((item) => item.id === link.from)
-				// console.log(`fromTasks.map item`, itemIndex, taskDtl[itemIndex])
+			console.log(`fromTasks.map item`, itemIndex, taskDtl[itemIndex])
 				// const endtime: number = ((taskD[itemIndex]?.start || 0) + (taskD[itemIndex]?.duration || 0) )
 				const endtime: number =
 					itemIndex >= 0

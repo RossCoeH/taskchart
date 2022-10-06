@@ -1,0 +1,22 @@
+.two-colors-input {
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+  height: 20px;
+  border: 1px solid black;
+  padding: 5px;
+  outline: none;
+
+  .two-colors-input-value {
+    &:empty:not(:focus):before {
+      content: attr(placeholder);
+      opacity: 0.5;
+      pointer-events: none;
+    }
+  }
+
+  &.disabled {
+    pointer-events: none;
+    opacity: 0.3;
+  }
+}

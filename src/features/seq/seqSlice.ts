@@ -4,7 +4,7 @@ import { fetchCount } from './seqAPI';
 import {SelActive,Task,Link} from './seqTypes'
 import {initTasksArray,initLinksArray} from './initValues'
 import { formatDiagnostic } from 'typescript';
-import { useAppDispatch } from '../../app/hooks';
+import { useAppDispatch } from '../../app/hooks/hooks';
 
 
 // The function below is called a thunk and allows us to perform async logic. It

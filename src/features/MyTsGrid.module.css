@@ -1,0 +1,87 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  font-family: BlinkMacSystemFont, -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+}
+
+table {
+  min-width: 100vw;
+  width: auto;
+  flex: 1;
+  display: grid;
+  border-collapse: collapse;
+  /* These are just initial values which are overriden using JavaScript when a column is resized */
+  grid-template-columns: 
+    minmax(150px, 1fr),
+    minmax(150px, 1.67fr),
+    minmax(150px, 1.67fr)
+}
+
+thead,
+tbody,
+tr {
+  display: block;
+}
+
+th,
+td {
+  padding: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: #6c7ae0;
+  text-align: left;
+  font-weight: normal;
+  font-size: 1.1rem;
+  color: white;
+  position: relative;
+}
+
+th:last-child {
+  border: 0;
+}
+
+/* from https://codepen.io/adam-lynch/pen/GaqgXP */
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: black;
+  opacity: 0;
+  width: 6px;
+  cursor: col-resize;
+}
+
+.resizeHandle:hover,
+/* The following selector is needed so the handle is visible during resize even if the mouse isn't over the handle anymore */
+.headerBeingResized .resizeHandle {
+  opacity: 0.5;
+}
+
+th:hover .resizeHandle {
+  opacity: 0.3;
+}
+
+td {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  color: #808080;
+}
+
+tr:nth-child(even) td {
+  background: #f8f6ff;
+}
