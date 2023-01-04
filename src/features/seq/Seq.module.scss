@@ -99,3 +99,14 @@
 .draggable {
   cursor: move;
 }
+
+.canGrab{
+    cursor: grabbing;
+}
+
+.canAccept{
+    cursor:crosshair;
+}
+.notAllowed{
+    cursor:not-allowed;
+}

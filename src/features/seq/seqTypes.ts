@@ -1,3 +1,9 @@
+import { EntityId, TaskAbortError } from "@reduxjs/toolkit"
+import { type } from "os"
+import { CSSProperties } from "react";
+
+export type ColorType= CSSProperties["color"]
+
 export interface ILayout{
   barPad: number,
 	PortDotSize: number,
@@ -20,25 +26,46 @@ export interface ILayout{
 	portLinkVoffset: number,
 	// highlightArrowRatio sets the hover or selected scale
 	highlightSizeRatio: number,
-}
+	cColors:{
+  active: ColorType
+  black: ColorType;
+  border?: ColorType;
+  brand?: ColorType;
+  control?: ColorType;
+  focus: ColorType;
+  placeholder?: ColorType;
+  selected: ColorType;
+  text?: ColorType;
+  icon?: ColorType;
+  white: ColorType;
+},
+	}
+
 export enum dragAction{'none','dragLine','canCreateLink','pan'}
 
+export const enum e_SeqDiagElement{TaskBar='TaskBar',SeqChart='SeqChart',Link='Link','LinkStart'='LinkStart',LinkEnd='LinkEnd',Port='Port',PortIn='Portin',PortOut='PortOut' } 
+
+
 export interface Link{
-  id:number,
-  from:number
-  to:number
+  id:number|string,
+  from:number|string,
+  to:number|string,
 }
 
-export interface SelActive{
-  type:string
-  id:number
+export interface ISelDiagItem{
+  type?:string
+  sname?:string
+	id?:EntityId
+	desc?:string
 }
 
 export interface Task{
-  id:number
+  id:number|string
   name:string
   duration:number
 }
+
+export type TaskNoId = Omit<Task,"id">
 
 export interface ITaskDtl{
   id:number| string
@@ -56,8 +83,7 @@ export interface XY {
 	y: number 
 }
 
-export enum SelTypes{
-  'backGraph'='backGraph',
-  'TaskBar'='TaskBar',
-  'Port'='Port',
+export interface IArrayOrderMove{
+	fromRowIndex:number,
+	toRowIndex:number
 }

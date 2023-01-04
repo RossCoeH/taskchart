@@ -1,11 +1,31 @@
-import { AsyncThunk, createAsyncThunk, createEntityAdapter, createSlice, Dictionary, EntityAdapter, EntityId, EntityState, PayloadAction, ThunkAction } from '@reduxjs/toolkit';
-import { RootState, AppThunk, AppDispatch } from '../../app/store';
-import { fetchCount } from './seqAPI';
-import {SelActive,Task,Link} from './seqTypes'
-import {initTasksArray,initLinksArray} from './initValues'
-import { formatDiagnostic } from 'typescript';
-import { useAppDispatch } from '../../app/hooks/hooks';
-
+import {
+	AsyncThunk,
+	createAsyncThunk,
+	createEntityAdapter,
+	createSlice,
+	Dictionary,
+	EntityAdapter,
+	EntityId,
+	EntityState,
+	PayloadAction,
+	ThunkAction,
+	current,
+	Update,
+} from '@reduxjs/toolkit'
+import { RootState, AppThunk, AppDispatch } from '../../app/store'
+import { fetchCount } from './seqAPI'
+import {
+	Task,
+	Link,
+	TaskNoId,
+	IArrayOrderMove,
+	e_SeqDiagElement,
+	ISelDiagItem,
+} from './seqTypes'
+import { initTasksArray, initLinksArray } from './initValues'
+import { formatDiagnostic } from 'typescript'
+import { useAppDispatch } from '../../app/hooks/hooks'
+import { number } from 'prop-types'
 
 // The function below is called a thunk and allows us to perform async logic. It
 // can be dispatched like a regular action: `dispatch(incrementAsync(10))`. This
@@ -13,13 +33,13 @@ import { useAppDispatch } from '../../app/hooks/hooks';
 // code can then be executed and other actions can be dispatched. Thunks are
 // typically used to make async requests.
 export const incrementAsync = createAsyncThunk(
-  'seq/fetchCount',
-  async (amount: number) => {
-    const response = await fetchCount(amount);
-    // The value we return becomes the `fulfilled` action payload
-    return response.data;
-  }
-);
+	'seq/fetchCount',
+	async (amount: number) => {
+		const response = await fetchCount(amount)
+		// The value we return becomes the `fulfilled` action payload
+		return response.data
+	}
+)
 /* 
 export const incrementLinkId= createAsyncThunk(
   'seq/incrementLinkId',
@@ -32,179 +52,250 @@ export const incrementLinkId= createAsyncThunk(
   }
 ) */
 
+const tasksAdapter = createEntityAdapter<Task>()
+const linksAdapter = createEntityAdapter<Link>()
 
-const tasksAdapter= createEntityAdapter<Task>()
-const linksAdapter= createEntityAdapter<Link>()
-
-export interface ISelItem{type:string,id:EntityId,sname:string,desc:string} 
-
- export interface SeqState {
-    value: number;
-    status: string;
-    tasks: EntityState<Task> 
-    links: EntityState<Link>;
-    isDragging:boolean,
-    mouseOverItem: ISelItem  |undefined
-    selectedItems:ISelItem[] 
-    nextLinkId :number
-    nextTaskId:EntityId
+export interface ISelItem {
+	type: e_SeqDiagElement
+	id: EntityId | undefined
+	sname: string
+	desc: string
 }
 
-interface PartialHasId{id:string|number}
+export interface SeqState {
+	value: number
+	status: string
+	tasks: EntityState<Task>
+	links: EntityState<Link>
+	isDragging: boolean
+	mouseOverItem?: ISelDiagItem
+	mouseDownInItem?: ISelDiagItem
+	selectedItems: ISelDiagItem[]
+	nextLinkId: number
+	nextTaskId: number
+}
 
-export const EntArrayToAdapter=(ents:Array< PartialHasId>)=>{ 
-  const ids:(string|number)[]= ents.map(ent=>ent.id).filter(id=>(id !==undefined))
-  let entities = ents.reduce((a,x) => ({...a, [x.id]: x}), {})
-  // RJH tested and working 
-  // console.log(`Adapter convert import to `, {ids:ids,entities: entities})
-  return(
-    {ids:ids,entities: entities}
-  )
+interface PartialHasId {
+	id: string | number
+}
+
+export const EntArrayToAdapter = (ents: Array<PartialHasId>) => {
+	const ids: (string | number)[] = ents
+		.map((ent) => ent.id)
+		.filter((id) => id !== undefined)
+	let entities = ents.reduce((a, x) => ({ ...a, [x.id]: x }), {})
+	// RJH tested and working
+	// console.log(`Adapter convert import to `, {ids:ids,entities: entities})
+	return { ids: ids, entities: entities }
 }
 
 export const seqSlice = createSlice({
-  name: 'seq',
-  initialState: <SeqState>{
-     value: 0,
-  status: 'idle',
-  tasks:tasksAdapter.getInitialState(EntArrayToAdapter(initTasksArray)),
-  links: linksAdapter.getInitialState(EntArrayToAdapter(initLinksArray)),
-  isDragging:false,
-   mouseOverItem: undefined ,
-    selectedItems:[],
-    nextLinkId :4,
-    nextTaskId:6,
-  },
+	name: 'seq',
+	initialState: <SeqState>{
+		value: 0,
+		status: 'idle',
+		tasks: tasksAdapter.getInitialState(EntArrayToAdapter(initTasksArray)),
+		links: linksAdapter.getInitialState(EntArrayToAdapter(initLinksArray)),
+		isDragging: false,
+		mouseOverItem: undefined,
+		selectedItems: [],
+		nextLinkId: 4,
+		nextTaskId: 6,
+	},
 
+	// The `reducers` field lets us define reducers and generate associated actions
+	reducers: {
+		linksAddOne: (state, entity: PayloadAction<Link>) => {
+			// check that id is not already used
+			let proposedNewId:number = state.nextLinkId
+			while (proposedNewId && state.links.entities[proposedNewId] !==undefined) {
+			   proposedNewId++
+		//	   console.log(`NextLinkId has been incremented to`, proposedNewId )
+			 }
+			
+		//	console.log(`input redux link`, entity)
+			const newLink: Link = { ...entity.payload, id: proposedNewId }
+			console.log(`adding into redux new link as`,proposedNewId, entity)
+			linksAdapter.addOne(state.links, newLink)
+			state.nextLinkId = proposedNewId + 1
+			// console.log('current state',current)
+		},
 
+		linksUpsertOne: (state, entity: PayloadAction<Link>) => {
+			console.log(`adding into redux link`, entity)
+			linksAdapter.upsertOne(state.links, entity.payload)
+		},
+		linksRemoveMany: (state, entities: PayloadAction<EntityId[]>) => {
+			linksAdapter.removeMany(state.links, entities)
+		},
+		tasksAddOne: (state, entity: PayloadAction<Task>) => {
+	
+			var newTaskId = state.nextTaskId
+					// check that id is not already used - increment if already used
+			while (newTaskId && state.tasks.entities[newTaskId] !==undefined) {
+			   newTaskId++
+			   console.log(`newTaskId added `, newTaskId )
+			 }
 
+			// console.log(`input redux task`, entity)
+			const newTask: Task = { ...entity.payload, id: newTaskId }
+		//	console.log(`adding into redux new task`, entity)
+			tasksAdapter.addOne(state.tasks, newTask)
+			state.nextTaskId = newTaskId + 1
+		},
+		tasksUpsertOne: (state, entity: PayloadAction<Task>) => {
+			tasksAdapter.upsertOne(state.tasks, entity)
+		},
+		tasksUpdateOne: (state, entity: PayloadAction<Update<Task>>) => {
+			tasksAdapter.updateOne(state.tasks, entity)
+		},
+		tasksAddMany: (state, entities: PayloadAction<Task[]>) => {
+			tasksAdapter.addMany(state.tasks, entities)
+		},
+		tasksSetAll: (state, entities: PayloadAction<Task[]>) => {
+			tasksAdapter.setAll(state.tasks, entities)
+		},
+		tasksRemoveMany: (state, entities: PayloadAction<EntityId[]>) => {
+			tasksAdapter.removeMany(state.tasks, entities)
+		},
 
-  // The `reducers` field lets us define reducers and generate associated actions
-  reducers: {
+		tasksReorder: (state, entities: PayloadAction<IArrayOrderMove>) => {
+			// const reorderRow = (fromRowIndex: number, toRowIndex: number)
+			const {
+				fromRowIndex,
+				toRowIndex,
+			}: { fromRowIndex: number; toRowIndex: number } = entities.payload
+			console.log('TODO define row move', fromRowIndex, ' to ', toRowIndex)
+			console.log('Ids before move: ', current(state.tasks.ids))
+			const elementToMove = state.tasks.ids.splice(fromRowIndex, 1)[0]
+			//removed 1 Id from array - therefore it is first element in array
+			//const elementToMove =state.tasks.ids.splice(fromRowIndex,1,0)[0] //remove 1 Id from array
+			console.log('mid id move', current(state.tasks.ids))
+			state.tasks.ids.splice(toRowIndex, 0, elementToMove) //add element in new location without delete
 
-    linksAddOne:(state,entity:PayloadAction <Link>)=>{ 
-      // check that id is not already used
-      let newId= entity.payload.id 
-      while (newId && state.links.entities[newId] !==undefined) {
-         newId++
-         console.log(`Updated`, newId )
-         
-       }
+			//TODO test reorder entities setData([...data])
+			console.log('after id move', current(state.tasks.ids))
+		},
+		setMouseOverItem: (state, action: PayloadAction<ISelDiagItem>) => {
+			state.mouseOverItem = action.payload
+		},
+		setMouseDownInItem: (state, action: PayloadAction<ISelDiagItem>) => {
+			state.mouseDownInItem = action.payload
+		},
+    
+		resetMouseOverItem: (state, action: PayloadAction<ISelDiagItem>) => {
+			if (
+				action.payload.type === state.mouseOverItem?.type &&
+				action.payload.id === state.mouseOverItem?.sname
+			)
+				// && action.payload.desc === state.mouseOverItem?.desc)
+				// have checked that we are removing the right item
+				state.mouseOverItem = undefined
+		},
+    	setSelectedItem: (state, action: PayloadAction<ISelDiagItem>) => {
+			state.selectedItems = [action.payload]
+		},
+		toggleDiagSelectedItem: (state, action: PayloadAction<ISelDiagItem>) => {
+			const index = state.selectedItems.findIndex(
+				(item) => item.sname === action.payload.sname
+			)
+			console.log(` toggleselectedItem sname, index`, action.payload, index)
+			if (index >= 0) {
+				console.log('Item already selected  ' + action.payload.sname)
+				state.selectedItems.splice(index, 1)
+			} else {
+				state.selectedItems.push(action.payload)
+			}
+		},
+		removeSelectedItem: (state, action: PayloadAction<ISelItem>) => {
+			state.selectedItems.filter((item) => item.sname !== action.payload.sname)
+		},
+		removeAllSelectedItems: (state, action: PayloadAction<void>) => {
+			state.selectedItems = []
+		},
 
-      console.log(`input redux link`, entity)
-      const newLink:Link= {...entity.payload,id:newId}
-      console.log(`adding into redux new link`, entity)
-   linksAdapter.addOne(state.links, newLink)
-  state.nextLinkId=newId+1
-  },
+		// const tasksAddOne=(state,entity){tasksAdapter.addOne(state.tasks,entity)},
+		// tasksUpsertOne((state,action)={tasksAdapter.upsertOne(state.tasks,payload.task)},
+		setNextLinkId: (state) => {
+			while (state.links.ids[state.nextLinkId]) state.nextLinkId++
+		},
+		increment: (state) => {
+			// Redux Toolkit allows us to write "mutating" logic in reducers. It
+			// doesn't actually mutate the state because it uses the Immer library,
+			// which detects changes to a "draft state" and produces a brand new
+			// immutable state based off those changes
+			state.value += 1
+		},
+		decrement: (state) => {
+			state.value -= 1
+		},
+		// Use the PayloadAction type to declare the contents of `action.payload`
+		incrementByAmount: (state, action: PayloadAction<number>) => {
+			state.value += action.payload
+		},
+		// ,
+		// upsertTasks: tasksAdapter.upsertMany,
+	},
+	// The `extraReducers` field lets the slice handle actions defined elsewhere,
+	// including actions generated by createAsyncThunk or in other slices.
+	extraReducers: (builder) => {
+		builder
+			.addCase(incrementAsync.pending, (state) => {
+				state.status = 'loading'
+			})
+			.addCase(incrementAsync.fulfilled, (state, action) => {
+				state.status = 'idle'
+				state.value += action.payload
+			})
+	},
+})
 
-  linksUpsertOne:(state,entity:PayloadAction <Link>)=>{ 
-      console.log(`adding into redux link`, entity)
-  linksAdapter.upsertOne(state.links, entity.payload)
-},
-    tasksUpsertOne:(state,entity:PayloadAction <Task>)=>{
-  tasksAdapter.addOne(state.tasks, entity)
-},
-tasksAddMany:(state,entities:PayloadAction <Task[]>)=>{
-  tasksAdapter.addMany(state.tasks, entities)
-},
-tasksSetAll:(state,entities:PayloadAction <Task[]>)=>{
-  tasksAdapter.setAll(state.tasks, entities)
-},
-tasksRemoveMany:(state,entities:PayloadAction <EntityId[]>)=>{
-  tasksAdapter.removeMany(state.tasks, entities)
-},
-setMouseOverItem:(state,action: PayloadAction<ISelItem>)=>{
-  state.mouseOverItem=action.payload
-},
-resetMouseOverItem:(state,action: PayloadAction<ISelItem>)=>{
-  if (action.payload.type === state.mouseOverItem?.type 
-  && action.payload.id === state.mouseOverItem?.id 
-  && action.payload.desc === state.mouseOverItem?.desc)
-  // have checked that we are removing the right item
-  state.mouseOverItem=undefined
-},
-toggleSelectedItem:(state,action: PayloadAction<ISelItem>)=>{
- const  index =state.selectedItems.findIndex(item=>item.sname===action.payload.sname)
- console.log(` toggleselectedItem sname, index`,   action.payload, index)
-if (index>=0)
- { console.log('Item already selected  '+action.payload.sname)
-   state.selectedItems.splice(index,1)
- }
-
-  else
- { state.selectedItems.push(action.payload)}
-},
-removeSelectedItem:(state,action: PayloadAction<ISelItem>)=>{
-  state.selectedItems.filter(item=>item.sname!==action.payload.sname)
-},
-removeAllSelectedItems:(state,action: PayloadAction<void>)=>{
-  state.selectedItems=[]
-},
-
-// const tasksAddOne=(state,entity){tasksAdapter.addOne(state.tasks,entity)},
-// tasksUpsertOne((state,action)={tasksAdapter.upsertOne(state.tasks,payload.task)},
- setNextLinkId:(state)=>{
-     while (state.links.ids[state.nextLinkId])state.nextLinkId++
-},
-    increment: (state) => {
-      // Redux Toolkit allows us to write "mutating" logic in reducers. It
-      // doesn't actually mutate the state because it uses the Immer library,
-      // which detects changes to a "draft state" and produces a brand new
-      // immutable state based off those changes
-      state.value += 1;
-    },
-    decrement: (state) => {
-      state.value -= 1;
-    },
-    // Use the PayloadAction type to declare the contents of `action.payload`
-    incrementByAmount: (state, action: PayloadAction<number>) => {
-      state.value += action.payload;
-    },
-    // ,
-// upsertTasks: tasksAdapter.upsertMany,
-
-  },
-  // The `extraReducers` field lets the slice handle actions defined elsewhere,
-  // including actions generated by createAsyncThunk or in other slices.
-  extraReducers: (builder) => {
-    builder
-      .addCase(incrementAsync.pending, (state) => {
-        state.status = 'loading';
-      })
-      .addCase(incrementAsync.fulfilled, (state, action) => {
-        state.status = 'idle';
-        state.value += action.payload;
-      });
-  },
-  
-});
-
-export const { increment, decrement, incrementByAmount,setNextLinkId,linksAddOne ,linksUpsertOne,tasksUpsertOne,resetMouseOverItem,
-setMouseOverItem ,toggleSelectedItem,removeSelectedItem,removeAllSelectedItems} = seqSlice.actions;
-
+export const {
+	increment,
+	decrement,
+	incrementByAmount,
+	setNextLinkId,
+	linksAddOne,
+	linksUpsertOne,
+	linksRemoveMany,
+	tasksAddOne,
+	tasksUpsertOne,
+	tasksUpdateOne,
+	tasksReorder,
+	tasksRemoveMany,
+	resetMouseOverItem,
+	setMouseOverItem,
+	setMouseDownInItem,
+  setSelectedItem,
+	toggleDiagSelectedItem,
+	removeSelectedItem,
+	removeAllSelectedItems,
+} = seqSlice.actions
 
 // The function below is called a selector and allows us to select a value from
 // the state. Selectors can also be defined inline where they're used instead of
 // in the slice file. For example: `useSelector((state: RootState) => state.seq.value)`
 
-export const selectCount =(state: RootState) => state.seq.value;
-export const getNextLinkId =(state: RootState) => state.seq.nextLinkId;
-export const getNextTaskId =(state: RootState) => state.seq.nextTaskId;
+export const selectCount = (state: RootState) => state.seq.value
+export const getNextLinkId = (state: RootState) => state.seq.nextLinkId
+export const getNextTaskId = (state: RootState) => state.seq.nextTaskId
 //export const selectorTasksAll=tasksAdapter.getSelectors((state:RootState)=>state.seq.tasks).selectAll
 //export const selectorLinksAll=(state:RootState)=> linksAdapter.getSelectors((state:RootState)=>state.seq.links).selectAll
 // export const {
 //   selectAll(): selectTodos,
 //   selectById: selectTodoById
 // } = tasksAdapter.getSelectors(state:SeqState=> state.tasks)
-export const isDragging=(state:RootState)=>state.seq.isDragging
-export const mouseOverItem=(state:RootState)=>state.seq.mouseOverItem
-export const selectedItems=(state:RootState)=>state.seq.selectedItems
+export const isDragging = (state: RootState) => state.seq.isDragging
+export const mouseOverItem = (state: RootState) => state.seq.mouseOverItem
+export const selectedItems = (state: RootState) => state.seq.selectedItems
+export const mouseDownInItem = (state: RootState) => state.seq.mouseOverItem
 
-export const selLinks=linksAdapter.getSelectors((state:RootState)=>state.seq.links)
-export const selTasks=tasksAdapter.getSelectors((state:RootState)=>state.seq.tasks)
-
-
+export const selLinks = linksAdapter.getSelectors(
+	(state: RootState) => state.seq.links
+)
+export const selTasks = tasksAdapter.getSelectors(
+	(state: RootState) => state.seq.tasks
+)
 
 // We can also write thunks by hand, which may contain both sync and async logic.
 // Here's an example of conditionally dispatching actions based on current state.
@@ -218,19 +309,22 @@ export const selTasks=tasksAdapter.getSelectors((state:RootState)=>state.seq.tas
   }
  )
  */
-export const incrementIfOdd = (amount: number): AppThunk => (
-  dispatch,
-  getState
-) => {
-  const currentValue = selectCount(getState());
-  if (currentValue % 2 === 1) {
-    dispatch(incrementByAmount(amount));
-  }
-};
+export const incrementIfOdd =
+	(amount: number): AppThunk =>
+	(dispatch, getState) => {
+		const currentValue = selectCount(getState())
+		if (currentValue % 2 === 1) {
+			dispatch(incrementByAmount(amount))
+		}
+	}
 
-
-export default seqSlice.reducer;
-function Dispatch(arg0: string, dispatch: any, Dispatch: any, state: any, RootState: any) {
-  throw new Error('Function not implemented.');
+export default seqSlice.reducer
+function Dispatch(
+	arg0: string,
+	dispatch: any,
+	Dispatch: any,
+	state: any,
+	RootState: any
+) {
+	throw new Error('Function not implemented.')
 }
-

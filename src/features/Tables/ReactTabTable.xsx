@@ -1,0 +1,337 @@
+import * as RectTable from 'reactabular-table';
+import { cloneDeep, findIndex } from 'lodash';
+//import * as edit from 'react-edit';
+import myInput from '../../reacteditcopy/myInput'
+import {EditText}  from 'react-edit-text';
+import { useAppDispatch, useAppSelector } from '../../app/hooks/hooks'
+import { Task } from '../seq/seqTypes'
+import {AnyAction} from 'redux'
+import { selTasks, SeqState ,tasksUpsertOne,tasksRemoveMany, tasksAddOne} from '../seq/seqSlice'
+import { type } from 'os';
+import { idText, TypeOfExpression } from 'typescript';
+import { Row } from 'jspdf-autotable';
+import { useState } from 'react';
+import { EntityId } from '@reduxjs/toolkit';
+import { useDispatch } from 'react-redux';
+
+enum eCellType {
+	'id' = 'id',
+	'text' = 'text',
+	'number' = 'number',
+	'dragBox' = 'dragBox',
+}
+
+interface IColDefs {
+		ref: keyof Task | undefined
+		title: string
+		minWidth: number // miWidth required for drag limiting
+		type: eCellType
+		editable: boolean
+		width?: number
+		minNumber?: number
+	}
+
+  
+	const colDefs: IColDefs[] = [
+		{
+			ref: undefined,
+			title: 'Drag',
+			minWidth: 50,
+			width:50,
+			type: eCellType.dragBox,
+			editable: false,
+		},
+		{
+			ref: 'id',
+			title: 'ID',
+			minWidth: 30,
+			width:50,
+			type: eCellType.id,
+			editable: false,
+		},
+		{
+			ref: 'name',
+			title: 'Task Name',
+			minWidth: 200,
+			width:300,
+			type: eCellType.text,
+			editable: true,
+		},
+		{
+			ref: 'duration',
+			title: 'Time',
+			minWidth: 60,
+			width:80,
+			type: eCellType.number,
+			editable: true,
+		},
+	]
+ 
+
+const ReactTabTable=()=>{
+
+ const tasks = useAppSelector(selTasks.selectAll)
+	console.log(`MyTable tasks`, tasks)
+const columns:RectTable.Column[] = [
+  {
+    property: 'drag',
+    header: {
+      label: 'drag',
+      transforms: [
+        ( label) => ({
+          onClick: () => alert(`clicked ${label}`)
+        })
+      ]
+    }
+  },
+   {
+    property: 'id',
+    header: {
+      label: 'id',
+      transforms: [
+        ( label) => ({
+          onClick: () => alert(`clicked ${label}`)
+        })
+      ]
+    }
+  },
+   {
+    property: 'name',
+    header: {
+      label: 'Task Name',
+      transforms: [
+        ( label) => ({
+          onClick: () => alert(`clicked ${label}`)
+        })
+      ]
+    }
+  },
+ {
+    property: 'duration',
+    header: {
+      label: 'duration',
+      transforms: [
+        ( label) => ({
+          onClick: () => alert(`clicked ${label}`)
+        })
+      ]
+    }
+  },
+]
+
+ const rows= tasks
+// const rows = [
+//   {
+//     id: 100,
+//     name: 'John',
+//     tools: {
+//       hammer: true
+//     },
+//     country: 'fi'
+//   },
+//   {
+//     id: 101,
+//     name: 'Jack',
+//     tools: {
+//       hammer: false
+//     },
+//     country: 'dk'
+//   }
+// ];
+type ICountries='fi'|'dk'
+
+const countries =Object.freeze ({
+  fi: 'Finland',
+  dk: 'Denmark'
+});
+
+// const columns:Table.Column[] = [
+//   {
+//     property: 'name',
+//     header: {
+//       label: 'Name',
+//       transforms: [
+//         (        label) => ({
+//           onClick: () => alert(`clicked ${label}`)
+//         })
+//       ]
+//     }
+//   },
+//   {
+//     property: 'tools',
+//     header: {
+//       label: 'Active',
+//       transforms: [
+//         (        label) => ({
+//           onClick: () => alert(`clicked ${label}`)
+//         })
+//       ]
+//     },
+//     cell: {
+//       formatters: [
+//                 tools=> tools.hammer ? 'Hammertime' : 'nope'
+//       ]
+//     }
+//   },
+//   {
+//     property: 'country',
+//     header: {
+//       label: 'Country',
+//       transforms: [
+//         (        label: any) => ({
+//           onClick: () => alert(`clicked ${label}`)
+//         })
+//       ]
+//     },
+//     cell: {
+//       formatters: [
+//         (        country: ICountries) => countries[country]
+//       ]
+//     }
+//   },
+// ];
+// type Iactions{
+//   createRow:{type:string;row:Task};
+//   deleteRow:{type:string; row:Task[ "id" ]};
+//   editRow:{type:string; row:{colIndex:keyof(Task),id:keyof(Task);}};
+//   confirmEdit:{type:string; row:{property:keyof(Task),value:number|string,id:Task["id"];}
+// }
+
+const [currentCellEdit, setCurrentCellEdit] = useState<{editRow:Task?, editColKey?:keyof(Task),curValue?:number|string}>()
+
+const actions = {
+  createRow: () => ({
+    type: 'CREATE_ROW',
+    row:{ name: 'John Doe', id: 'uuid',duration:10 }
+  }),
+  deleteRow: (id: keyof(Task)) => ({
+    type: 'DELETE_ROW',
+    row: { id }
+  }),
+  editRow: (columnIndex:keyof(Task), id: keyof(Task)) => ({
+    type: 'EDIT_ROW',
+    row: { columnIndex, id }
+  }),
+  confirmEdit: (property: keyof(Task), value: number|string, id: keyof(Task)) => ({
+    type: 'CONFIRM_EDIT',
+    row: { property, value, id }
+  })
+};
+
+type IActType = ('CREATE_ROW'| 'DELETE_ROW' | 'EDIT_ROW' |'CONFIRM_EDIT')
+// const Actreducer = (state:SeqState, action:AnyAction) => {
+//   const row = action.row;
+//   const index:EntityId = row &&  row.id // .findIndex(state, { id: row.id });
+
+//   switch (action.type) {
+//     case 'CREATE_ROW':
+//     const payload:Task= {name:'newName',duration:22,id:0}
+//       return tasksAddOne(payload)
+
+//     case 'DELETE_ROW':
+//       if (index >= 0) {
+//         return  tasksRemoveMany([index])  //state.slice(0, index).concat(state.slice(index + 1));
+//       }
+
+//     case 'EDIT_ROW':
+//       if (index >= 0) {
+//         return editProperty(rows, index, {
+//           editingColIndex: row.columnIndex
+//         });
+//       }
+
+//     case 'CONFIRM_EDIT':
+//       if (index >= 0) {
+//         return editProperty(state, index, {
+//           [row.property]: row.value,
+//           editingColIndex: false
+//         });
+//       }
+
+//     default:
+//       return state;
+//   }
+
+//   return state;
+// };
+
+function editProperty(rows:Task[], id:EntityId,editingColIndex:keyof(Task)|undefined) {
+  // Skip mutation, there's likely a neater way to achieve this
+  const ret = cloneDeep(rows);
+//TODO solve type
+  // Object.keys(values).forEach(v => {
+  //   ret[id][v] = values[v];
+  // });
+
+  return ret;
+}
+
+
+
+const handleSaveChange(e:Event<any>)=>{
+  alert("change made:" )
+}
+onStartEdit(e:any)=>{
+  //TODO  to store current edit cell
+  }
+
+ //const editable = ({
+   //    isEditing: ({ columnIndex, rowData }) => columnIndex === rowData.editing,
+
+      // onActivate: ({ columnIndex, rowData }) => {
+
+      //   this?.props?.editRow(columnIndex, rowData.id)??:"unknown value";
+      // },
+      // onValue: ({ value, rowData, property }) => {
+      //   this.props.confirmEdit(property, value, rowData.id);
+      // }
+      // defValue = rowData[columnIndex]
+      // return(
+      //   <EditText
+      //   value = {defValue})
+      //   onSave={(e)=handleSaveChange(e)}
+      //   onEditMode = {e=> handleStartEdit(e)}
+      //   />
+      // )
+    //})
+
+ const editable = ({
+       isEditing: ({ columnIndex, rowData }) => columnIndex === rowData.editing,
+
+      onActivate: ({ columnIndex, rowData }) => {
+
+        this?.props?.editRow(columnIndex, rowData.id)??:"unknown value";
+      },
+      onValue: ({ value, rowData, property }) => {
+        this.props.confirmEdit(property, value, rowData.id);
+      }
+      defValue = rowData[columnIndex]
+      return(
+        <myInput
+        value = {defValue})
+        onSave={(e)=handleSaveChange(e)}
+        onEditMode = {e=> handleStartEdit(e)}
+        />
+      )
+    })
+return(
+<RectTable.Provider
+  className="pure-table pure-table-striped"
+  columns={columns}
+>
+  <RectTable.Header />
+<tr>
+              <td><button type="button" onClick={e => {
+                e.preventDefault();
+
+               ( tasksAddOne(payload={id=0,name="new", duration=20}));
+              }}>Add new</button></td>
+              <td></td>
+              <td></td>
+              <td></td>
+          </tr>
+  <RectTable.Body rows={rows} rowKey="id" />
+</RectTable.Provider>
+)
+}
+export default ReactTabTable

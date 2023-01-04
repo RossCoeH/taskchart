@@ -7,9 +7,12 @@
   fill:mediumorchid;
   stroke-width: 4px;
   stroke:  rgb(0, 47, 255) ;
+
 }
 .isselected{
   border: 2px gold solid;
    stroke-width: 4px;
   stroke:  rgb(19, 128, 42)
 }
+
+

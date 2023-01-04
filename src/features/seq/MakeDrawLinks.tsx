@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react'
-import { ILayout, ITaskDtl } from './seqTypes'
+import { e_SeqDiagElement, ILayout, ISelDiagItem, ITaskDtl } from './seqTypes'
 import { scaleLinear, LinePath } from '@visx/visx'
 import { useSelector } from 'react-redux'
 import {
@@ -8,30 +8,33 @@ import {
 	EntityId,
 	EntityState,
 } from '@reduxjs/toolkit'
-import { toggleSelectedItem, ISelItem, mouseOverItem, selectedItems } from './seqSlice'
+import {
+	toggleDiagSelectedItem,
+	ISelItem,
+	mouseOverItem,
+	selectedItems,
+} from './seqSlice'
 import { useAppDispatch, useAppSelector } from '../../app/hooks/hooks'
 import './MakeDrawLinks.scss'
 
 import clsx from 'clsx'
 import { isNamedTupleMember } from 'typescript'
-import{ outPort_x }from './Seq'
+import { outPort_x } from './Seq'
 
 const MakeDrawLinks = (
-	taskDtl:  ITaskDtl[],
+	taskDtl: ITaskDtl[],
 	iLayout: ILayout,
 	xScale: any,
 	yScale: any,
 	// taskEnts: Dictionary<Task>,
-	handleMouseEnter: (selInfo: ISelItem) => void,
-	handleMouseLeave: (selInfo: ISelItem) => void,
-//	outPort_x:(taskItem: ITaskDtl, taskIndex: number) =>number,
-	
+	handleMouseEnter: (selInfo: ISelDiagItem) => void,
+	handleMouseLeave: (selInfo: ISelDiagItem) => void
+	//	outPort_x:(taskItem: ITaskDtl, taskIndex: number) =>number,
 ) => {
 	const taskIds = useAppSelector((state) => state.seq.tasks.ids)
-  const selectedList=useAppSelector(selectedItems)
-	
-	const dispatch = useAppDispatch()
+	const selectedList = useAppSelector(selectedItems)
 
+	const dispatch = useAppDispatch()
 
 	const outPort_y = (index: number) =>
 		(index + 1) * iLayout.barSpacing - iLayout.barPad // fetch lower edge of taskbar
@@ -60,7 +63,7 @@ const MakeDrawLinks = (
 		// top level per task
 		if (id === undefined) return null
 
-		const taskFromItem = taskDtl.find(item=>item.id===id)
+		const taskFromItem = taskDtl.find((item) => item.id === id)
 		if (taskFromItem === undefined) {
 			console.log(`Undefined taskOutitem at index ${indexPortIdFrom}`)
 			return null
@@ -69,7 +72,7 @@ const MakeDrawLinks = (
 		// work through inner normal
 		const innerMap = taskFromItem.froms.map((link, indexPortIdFrom) => {
 			// find to Task and matchind index
-			const taskToItem = taskDtl.find(item=>item.id===link.to)
+			const taskToItem = taskDtl.find((item) => item.id === link.to)
 			if (taskToItem === undefined) {
 				console.log(`Undefined taskToitem at index ${indexPortIdFrom}`)
 				return null
@@ -124,29 +127,23 @@ const MakeDrawLinks = (
 				const color = 'purple'
 				const triHeight = yScale(iLayout.portTriHeight)
 				const triLength = yScale(iLayout.portTriLength)
-				const nameStart = `Link Start -Task ${
-					taskFromItem?.name
-				} to ${taskToItem?.name}`
-				const nameLink = `Link -Task ${taskFromItem?.name} to ${
-					taskToItem.name
-				}`
-				const nameEnd = `Link End -Task ${taskFromItem?.name} to ${
-					taskToItem?.name
-				}`
-				const selInfoS = {
-					type: 'LinkStart',
+				const nameStart = `Link Start -Task ${taskFromItem?.name} to ${taskToItem?.name}`
+				const nameLink = `Link -Task ${taskFromItem?.name} to ${taskToItem.name}`
+				const nameEnd = `Link End -Task ${taskFromItem?.name} to ${taskToItem?.name}`
+				const selInfoS:ISelDiagItem = {
+					type: e_SeqDiagElement.LinkStart,
 					id: link.id,
 					sname: `Slink${link.id}`,
 					desc: nameStart,
 				}
-				const selInfoL = {
-					type: 'LinkLine',
+				const selInfoL:ISelDiagItem = {
+					type: e_SeqDiagElement.Link,
 					id: link.id,
 					sname: `link${link.id}`,
 					desc: nameStart,
 				}
-				const selInfoE = {
-					type: 'LinkEnd',
+				const selInfoE:ISelDiagItem = {
+					type: e_SeqDiagElement.LinkEnd,
 					id: link.id,
 					sname: `Elink${link.id}`,
 					desc: nameStart,
@@ -159,36 +156,30 @@ const MakeDrawLinks = (
 					appMouseOverItem?.sname === selInfoE.sname ||
 					appMouseOverItem?.sname === selInfoL.sname
 
-				var classnameS = startIsHover
-					? 'linkStartIsHover'
-					: 'linkStart'
+				var classnameS = startIsHover ? 'linkStartIsHover' : 'linkStart'
 
-	var classnameE = endIsHover ? 'linkEndIsHover' : 'linkEnd'
+				var classnameE = endIsHover ? 'linkEndIsHover' : 'linkEnd'
 
 				var classnameL =
-					appMouseOverItem?.sname === selInfoL.sname
-						? 'linkIsHover'
-						: 'link'
+					appMouseOverItem?.sname === selInfoL.sname ? 'linkIsHover' : 'link'
 
-				const linkIsSelected=	(selectedList.findIndex(item=>item.sname===selInfoL.sname) >=0)
-        if (linkIsSelected){
-					classnameL=  classnameL +' '+'linkIsSelected'
-					classnameS=  classnameS +' '+'linkFillIsSelected'
-					classnameE=  classnameE +' '+'linkFillIsSelected'
+				const linkIsSelected =
+					selectedList.findIndex((item) => item.sname === selInfoL.sname) >= 0
+				if (linkIsSelected) {
+					classnameL = classnameL + ' ' + 'linkIsSelected'
+					classnameS = classnameS + ' ' + 'linkFillIsSelected'
+					classnameE = classnameE + ' ' + 'linkFillIsSelected'
 				}
 
-
-			
-
-				const dotScale = (startIsHover ||linkIsSelected)? 2.0 : 1.0 // sets display scale
-				const triScale = (endIsHover||linkIsSelected) ? 2.0 : 1.0 // set display scale
+				const dotScale = startIsHover || linkIsSelected ? 2.0 : 1.0 // sets display scale
+				const triScale = endIsHover || linkIsSelected ? 2.0 : 1.0 // set display scale
 
 				// console.log(`App isHover over link`,	appMouseOverItem?.sname || '',	dotScale,triScale	)
 
-const onMouseUp= (selInfo:ISelItem):void=>{
-	  console.log(`Mouseup`, selInfo)
-	  dispatch(toggleSelectedItem(selInfo))
-	}
+				const onMouseUp = (selInfo: ISelDiagItem): void => {
+					console.log(`Mouseup`, selInfo)
+					dispatch(toggleDiagSelectedItem(selInfo))
+				}
 				const trianglePoints = [
 					xScale(pptEnd.x) - triLength * triScale,
 					pptEnd.y + (triHeight * triScale) / 2,
@@ -197,6 +188,12 @@ const onMouseUp= (selInfo:ISelItem):void=>{
 					xScale(pptEnd.x),
 					pptEnd.y,
 				].toString()
+
+  
+//keyup cannot be attached to polylines
+const handlekeyUp=(e:KeyboardEvent,info:e_SeqDiagElement)=>{
+	console.log('key up inside Link', e.key, ' startIsHover =', startIsHover)
+}
 
 				outputPortCircles.push(
 					<circle
@@ -209,7 +206,9 @@ const onMouseUp= (selInfo:ISelItem):void=>{
 						// stroke='1px'
 						onMouseEnter={(e) => handleMouseEnter(selInfoS)}
 						onMouseLeave={(e) => handleMouseLeave(selInfoS)}
-						onMouseUp={(e) => onMouseUp&& onMouseUp(selInfoS)}
+						onMouseUp={(e) => onMouseUp && onMouseUp(selInfoS)}
+						onClick={e=> alert(`Click on ${selInfoS.sname}`)}
+					
 					/>
 				)
 				const polypoints = path.map((item) => `${item.x},${item.y} `).join(' ')
@@ -220,12 +219,14 @@ const onMouseUp= (selInfo:ISelItem):void=>{
 						//curve={curveLinear}  curveLinear is the default so do not need to specify
 						points={polypoints}
 						// stroke={color || 'orange'}
-						fill='none'
+						fill='transparent'
 						// strokeWidth='2'
 						radius='4'
 						onMouseEnter={(e) => handleMouseEnter(selInfoL)}
 						onMouseLeave={(e) => handleMouseLeave(selInfoL)}
-						onMouseUp={(e) => onMouseUp&& onMouseUp(selInfoL)}
+						onMouseUp={(e) => onMouseUp && onMouseUp(selInfoL)}
+						onClick={e=> alert(`Click on ${selInfoL.sname}`)}
+						
 					/>
 				)
 				output.push(
@@ -237,7 +238,7 @@ const onMouseUp= (selInfo:ISelItem):void=>{
 						// stroke='1 px'
 						onMouseEnter={(e) => handleMouseEnter(selInfoE)}
 						onMouseLeave={(e) => handleMouseLeave(selInfoE)}
-						onMouseUp={(e) => onMouseUp&& onMouseUp(selInfoE)}
+						onMouseUp={(e) => onMouseUp && onMouseUp(selInfoE)}
 					/>
 				)
 			}
@@ -247,8 +248,8 @@ const onMouseUp= (selInfo:ISelItem):void=>{
 
 		const retMap = taskFromItem.rets.map((link, indexPortIdFrom, retarray) => {
 			// find to Task and matchind index
-			const taskToItem = taskDtl.find(item=>(item.id===link.to))
-			const taskFromItem = taskDtl.find(item=>(item.id===link.from))
+			const taskToItem = taskDtl.find((item) => item.id === link.to)
+			const taskFromItem = taskDtl.find((item) => item.id === link.from)
 			if (taskToItem === undefined) {
 				console.log(`Undefined taskToitem at index ${indexPortIdFrom}`)
 				return null
@@ -257,11 +258,11 @@ const onMouseUp= (selInfo:ISelItem):void=>{
 				console.log(`Undefined taskFromItem at link id ${link.id}`)
 				return null
 			}
-			const indexTaskIdFrom =
-				taskIds.findIndex(item => (link.from === item)) 
-			const indexTaskIdTo = taskIds.findIndex((item) => link.to === item) 
-			const indexPortTo =
-				taskToItem?.tos.findIndex(item => (link.id === item.id))
+			const indexTaskIdFrom = taskIds.findIndex((item) => link.from === item)
+			const indexTaskIdTo = taskIds.findIndex((item) => link.to === item)
+			const indexPortTo = taskToItem?.tos.findIndex(
+				(item) => link.id === item.id
+			)
 
 			const ppt0 = {
 				x: taskFromItem.start + taskFromItem.duration,
@@ -314,15 +315,9 @@ const onMouseUp= (selInfo:ISelItem):void=>{
 				const color = 'green'
 				const triHeight = yScale(iLayout.portTriHeight)
 				const triLength = yScale(iLayout.portTriLength)
-				const nameStart = `Link Start -Task ${
-					taskFromItem?.name
-				} to ${taskToItem?.name}`
-				const nameLink = `Link -Task ${taskFromItem?.name} to ${
-					taskToItem?.name
-				}`
-				const nameEnd = `Link End -Task ${taskFromItem?.name} to ${
-					taskToItem?.name
-				}`
+				const nameStart = `Link Start -Task ${taskFromItem?.name} to ${taskToItem?.name}`
+				const nameLink = `Link -Task ${taskFromItem?.name} to ${taskToItem?.name}`
+				const nameEnd = `Link End -Task ${taskFromItem?.name} to ${taskToItem?.name}`
 
 				const trianglePoints = [
 					xScale(pptEnd.x) + triLength,
@@ -344,7 +339,7 @@ const onMouseUp= (selInfo:ISelItem):void=>{
 						// stroke='1px'
 						onMouseEnter={(e) =>
 							handleMouseEnter({
-								type: 'LinkStart',
+								type: e_SeqDiagElement.LinkStart,
 								id: link.id,
 								sname: `Slink${link.id}`,
 								desc: nameStart,
@@ -352,7 +347,7 @@ const onMouseUp= (selInfo:ISelItem):void=>{
 						}
 						onMouseLeave={(e) =>
 							handleMouseLeave({
-								type: 'LinkStart',
+								type: e_SeqDiagElement.LinkStart,
 								sname: `Slink${link.id}`,
 								id: link.id,
 								desc: nameStart,
@@ -373,7 +368,7 @@ const onMouseUp= (selInfo:ISelItem):void=>{
 						radius='4'
 						onMouseEnter={(e) =>
 							handleMouseEnter({
-								type: 'Link',
+								type: e_SeqDiagElement.Link,
 								id: link.id,
 								sname: `link${link.id}`,
 								desc: nameLink,
@@ -381,7 +376,7 @@ const onMouseUp= (selInfo:ISelItem):void=>{
 						}
 						onMouseLeave={(e) =>
 							handleMouseLeave({
-								type: 'Link',
+								type: e_SeqDiagElement.Link,
 								id: link.id,
 								sname: `link${link.id}`,
 								desc: nameLink,
@@ -398,7 +393,7 @@ const onMouseUp= (selInfo:ISelItem):void=>{
 						stroke='1 px'
 						onMouseEnter={(e) =>
 							handleMouseEnter({
-								type: 'Link',
+								type: e_SeqDiagElement.Link,
 								id: link.id,
 								sname: `Elink${link.id}`,
 								desc: nameEnd,
@@ -406,7 +401,7 @@ const onMouseUp= (selInfo:ISelItem):void=>{
 						}
 						onMouseLeave={(e) =>
 							handleMouseLeave({
-								type: 'Link',
+								type: e_SeqDiagElement.Link,
 								id: link.id,
 								sname: `Elink${link.id}`,
 								desc: nameEnd,

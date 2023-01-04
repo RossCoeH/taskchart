@@ -9,7 +9,7 @@ import React, {
 	useState,
 	ReactNode,
 	KeyboardEvent,
-	useEffect
+	useEffect,
 } from 'react'
 import * as _ from 'lodash'
 
@@ -40,7 +40,7 @@ import {
 	ISelItem,
 	setMouseOverItem,
 	resetMouseOverItem,
-	toggleSelectedItem,
+	toggleDiagSelectedItem,
 	selectedItems,
 	linksAddOne,
 	linksUpsertOne,
@@ -49,8 +49,17 @@ import {
 	getNextLinkId,
 	removeSelectedItem,
 	removeAllSelectedItems,
+	linksRemoveMany,
 } from './seqSlice'
-import { Link, Task, XY, SelTypes, ITaskDtl, ILayout } from './seqTypes'
+import {
+	Link,
+	Task,
+	XY,
+	ITaskDtl,
+	ILayout,
+	e_SeqDiagElement,
+	ISelDiagItem,
+} from './seqTypes'
 import styles from './Seq.module.scss'
 import { useSelector } from 'react-redux'
 import {
@@ -72,12 +81,37 @@ import { useClickOutside, useKeyboardEvent, useToggle } from '@react-hookz/web'
 import { options, string } from 'yargs'
 import TaskList from './TaskList'
 import RCV_Grid from '../RVG_table/RCV_grid'
+import { Color } from 'jspdf-autotable'
+import { Sorting } from '@tanstack/react-table'
+import { assert, debug } from 'console'
 //import MyTable from '../Tables/MyTable'
 
+interface IStartMouseDrag {
+	startElement: e_SeqDiagElement
+	startId: EntityId
+	index?: number
+	x?: number
+	y?: number
+}
+
+interface IEndMouseDrag {
+	endElement: e_SeqDiagElement
+	allowed: boolean
+	endId: EntityId
+	index?: number
+	x?: number
+	y?: number
+}
 
 export const background = '#f3f3f3'
 
-// interface SvgRef{SVGElement |undefined)}
+enum e_CursorStyles {
+	default = '',
+	notAllowed = 'notAllowed',
+	canGrab = 'canGrab',
+	canAccept = 'canAccept',
+	draggable = 'draggable',
+}
 
 const toNum2 = (num: number | undefined | typeof NaN) => {
 	return num !== undefined && !isNaN(num) ? num.toFixed(2) : ' '
@@ -90,24 +124,28 @@ enum dragAction {
 	pan = 'pan',
 }
 
-	export const outPort_x = (taskItem: ITaskDtl, taskIndex: number) => {
-		const output = taskItem.start + taskItem.duration / 2
-		// console.log(`taskIndex @${taskIndex} ,  outPortx=${output} -`, taskItem)
-		return output
-	}
-
-
+export const outPort_x = (taskItem: ITaskDtl, taskIndex: number | string) => {
+	const output = taskItem.start + taskItem.duration / 2
+	// console.log(`taskIndex @${taskIndex} ,  outPortx=${output} -`, taskItem)
+	return output
+}
 
 export function Seq() {
-
 	const dispatch = useAppDispatch()
 	const [incrementAmount, setIncrementAmount] = useState('2')
 	const { vh, vw } = useViewport(/* object with options (if needed) */)
 	//const [isDragging, setIsDragging] = useState(false)
 	const [dragActionActive, setdragActionActive] = useState(dragAction.none)
-	const [dragStart, setDragStart] = useState<XY | undefined>(undefined)
+	type IDragStart = {
+		x: number
+		y: number
+		startId: EntityId
+		senderType: e_SeqDiagElement
+	}
+	const [dragStart, setDragStart] = useState<IDragStart | undefined>(undefined)
 	const [mousepos, setMousepos] = useState<XY | undefined>(undefined)
-	const graphAreaRef = useRef<SVGSVGElement | null>(null) // <SVGElement | React.LegacyRef<SVGElement>| null | undefined>() // ref for hart area
+	const graphAreaRef = useRef<SVGSVGElement | null>(null)
+
 	const [activeTask, setActiveTask] = useState(undefined)
 	const [iLayout, setIlayout] = useState(initialLayout)
 
@@ -132,28 +170,33 @@ export function Seq() {
 	const mOverItem = useAppSelector(mouseOverItem)
 	const nextLinkId = useAppSelector(getNextLinkId)
 	const nextTaskId = useAppSelector(getNextTaskId)
-  const [toggledMousedDown, toggleMousedDown] = useToggle();
+	const [toggledMousedDown, toggleMousedDown] = useToggle()
+	const [dragStartInfo, setDragStartInfo] = useState<
+		IStartMouseDrag | undefined
+	>(undefined)
+	const [seqCursorStyle, setSeqCursorStyle] = useState<e_CursorStyles>(
+		e_CursorStyles.default
+	)
+	const ClickOutSide = () => {
+		const ref = useRef(null)
+		useClickOutside(ref, () => {
+			window.alert('Clicked Outside')
+			toggleMousedDown()
+		})
+	}
 
-	 const ClickOutSide = () => {
-    const ref = useRef(null);
-    useClickOutside(ref, () => {
-      window.alert('Clicked Outside');
-		toggleMousedDown()
-    })
- }
+	const [keyInlist, setKeyInList] = useState<string[]>([])
 
- const [keyInlist, setKeyInList] = useState<string[]>([]);
+	useKeyboardEvent(
+		true,
+		(e) => {
+			console.log('keyup event', e)
+			setKeyInList((l) => l.slice(-5).concat([e.key]))
+		},
+		[],
 
- useKeyboardEvent(
-    true,
-    (e) => {
-      setKeyInList((l) => l.slice(-5).concat([e.key]));
-    },
-    [],
-   {event:'keyup',eventOptions: { passive: true } }
-		
-  )
-	
+		{ event: 'keyup', eventOptions: { passive: true } }
+	)
 
 	const time = (d: Task) => d.duration
 
@@ -164,76 +207,75 @@ export function Seq() {
 		)
 	}
 
+	let taskDtl: ITaskDtl[] = []
 
-	let taskDtl:ITaskDtl[] = []
-	
+	const getTaskDEndTime = (taskId: EntityId) => {
+		if (taskId === undefined) alert('error in finding taskId')
 
-		const getTaskDEndTime = (taskId: EntityId) => {
-			if (taskId === undefined) alert('error in finding taskID')
-
-			const index = taskIds.indexOf(taskId)
-			const etime =
-				taskDtl[index]?.start || 0 + (taskDtl[index]?.duration || 0) || 0
+		const index = taskIds.indexOf(taskId)
+		const etime =
+			taskDtl[index]?.start || 0 + (taskDtl[index]?.duration || 0) || 0
 		// console.log(`index ${index} -taskid ${taskId} -etime ${etime}`)
-			// console.log(`index ${index} taskD.get `, taskDtl[index], taskDtl)
-			return etime
-		}
+		// console.log(`index ${index} taskD.get `, taskDtl[index], taskDtl)
+		return etime
+	}
 
-		taskIds.map((taskid, index) => {
-			const ctask = taskEnts[taskid]
-			// console.log(
-			// 	`preparing taskDtl for index ${index} - taskId ${taskid} `,
-			// 	ctask
-			// )
-			//	console.log(`index ${index} - task`, taskid, ctask)
-			let fromTasks = linksAll.filter(
-				(link) =>
-					link.from === taskid &&
-					taskIds.indexOf(link.from) < taskIds.indexOf(link.to)
-				// from tasks only exist if they start from an earlier index
-			)
+	taskIds.map((taskid, index) => {
+		const ctask = taskEnts[taskid]
+		// console.log(
+		// 	`preparing taskDtl for index ${index} - taskId ${taskid} `,
+		// 	ctask
+		// )
+		//	console.log(`index ${index} - task`, taskid, ctask)
+		let fromTasks = linksAll.filter(
+			(link) =>
+				link.from === taskid &&
+				taskIds.indexOf(link.from) < taskIds.indexOf(link.to)
+			// from tasks only exist if they start from an earlier index
+		)
 
-			const retTasks = linksAll.filter(
-				(link) =>
-					link.to === taskid &&
-					taskIds.indexOf(link.from) > taskIds.indexOf(link.to)
-				// retTasks only exist if they start from an later index
-			)
+		const retTasks = linksAll.filter(
+			(link) =>
+				link.to === taskid &&
+				taskIds.indexOf(link.from) > taskIds.indexOf(link.to)
+			// retTasks only exist if they start from an later index
+		)
 
-			const toTasks = linksAll.filter((link) => link.to == taskid)
+		const toTasks = linksAll.filter((link) => link.to == taskid)
 
-			//  get start time - only those earlier than current will have defined times so ignore undefined values
-			let startTime = 0
-			toTasks.map((link) => {
-				//const tDtl = 	(taskDtl && tid !==undefined&& taskDtl.hasOwnProperty(tid))? taskDtl[tid] :undefined
-				const itemIndex = taskDtl.findIndex((item) => item.id === link.from)
-			console.log(`fromTasks.map item`, itemIndex, taskDtl[itemIndex])
-				// const endtime: number = ((taskD[itemIndex]?.start || 0) + (taskD[itemIndex]?.duration || 0) )
-				const endtime: number =
-					itemIndex >= 0
-						? (taskDtl[itemIndex].start || 0) + (taskDtl[itemIndex].duration || 0)
-						: 0
-				// findIndex returns -1 if not found
-				if (endtime && endtime > startTime) startTime = endtime
-			})
-
-			taskDtl.push({
-				id: ctask?.id || 0,
-				name: ctask?.name || '',
-				duration: ctask?.duration || 0,
-				index: index,
-				froms: fromTasks,
-				rets: retTasks,
-				tos: toTasks,
-				start: startTime,
-			})
+		//  get start time - only those earlier than current will have defined times so ignore undefined values
+		let startTime = 0
+		toTasks.map((link) => {
+			//const tDtl = 	(taskDtl && tid !==undefined&& taskDtl.hasOwnProperty(tid))? taskDtl[tid] :undefined
+			const itemIndex = taskDtl.findIndex((item) => item.id === link.from)
+			// console.log(`fromTasks.map item`, itemIndex, taskDtl[itemIndex])
+			// const endtime: number = ((taskD[itemIndex]?.start || 0) + (taskD[itemIndex]?.duration || 0) )
+			const endtime: number =
+				itemIndex >= 0
+					? (taskDtl[itemIndex].start || 0) + (taskDtl[itemIndex].duration || 0)
+					: 0
+			// findIndex returns -1 if not found
+			if (endtime && endtime > startTime) startTime = endtime
 		})
-//		console.log(`taskDtl`, taskDtl)
-		// now need to sort to arrows so the index is based on start time of predecessor link.from
-		taskDtl.forEach((taskitem) => {
-			if (taskitem.tos.length > 1) {
-				// now sort froms based on starttimes + duration of predecessor - earliest is last
-/* 				console.log(
+
+		taskDtl.push({
+			id: ctask?.id || 0,
+			name: ctask?.name || '',
+			duration: ctask?.duration || 0,
+			index: index,
+			froms: fromTasks,
+			rets: retTasks,
+			tos: toTasks,
+			start: startTime,
+		})
+	})
+
+	//		console.log(`taskDtl`, taskDtl)
+	// now need to sort to arrows so the index is based on start time of predecessor link.from
+	// this is used to avoid path line crossing
+	taskDtl.forEach((taskitem, index, taskDtl) => {
+		// now sort froms based on starttimes + duration of predecessor - earliest is last
+		/* 				console.log(
 					`toTasks ${taskitem.id}`)
 					taskitem.tos.map((link,index )=>
 						console.log(
@@ -242,19 +284,51 @@ export function Seq() {
 							getTaskDEndTime(link.from)
 						)
 					) */
+		
+		console.log(`taskitem ${index} ${taskitem.name} `, taskitem)
+		taskitem.froms.sort(
+			(aTask, bTask) =>
+				//		(outPort_x(taskDtl[aTask.from],0) - outPort_x(taskDtl[bTask.from],0)) * -1.0
+				taskDtl.findIndex((tt) => tt.id === aTask.to) -
+				taskDtl.findIndex((tt) => tt.id === bTask.to)
+		)
+		if (taskitem.index === 4) console.log('Before tos Sorting', taskitem.tos)
+		
+		taskitem.tos.sort(
+			(aTask, bTask) => {
+	
+				if (aTask.from === undefined || bTask.from === undefined) return 0
+				const aTaskDtlfromIndex = taskDtl.findIndex((tt) => tt.id === aTask.from)
+				const bTaskDtlfromIndex = taskDtl.findIndex((tt) => tt.id === bTask.from)
+
+				// if index is -1 then item was nto found - return as no change
+				if (aTaskDtlfromIndex === -1 || bTaskDtlfromIndex === -1) return 0
+
+				//		(outPort_x(taskDtl[aTask.from],0) - outPort_x(taskDtl[bTask.from],0)) * -1.0
 				
+				const timeEndA=	taskDtl[ aTaskDtlfromIndex ].start + taskDtl[ aTaskDtlfromIndex ].duration 
+				const timeEndB = taskDtl[ bTaskDtlfromIndex ].start + taskDtl[ bTaskDtlfromIndex ].duration
+				if(taskitem.index===4) console.log('aIndex',aTaskDtlfromIndex, 'bIndex',bTaskDtlfromIndex,  'timeEndA', timeEndA, ' timeEndB', timeEndB)
+				return (timeEndA>timeEndB)? -1.0:1.0
+			})
+		 if(taskitem.index===4) console.log('After tos Sorting', taskitem.tos)
 
-				taskitem.tos.sort(
-					(aTask, bTask,) =>
-						(outPort_x(taskDtl[aTask.from],0) - outPort_x(taskDtl[bTask.from],0)) * -1.0
-				)
-			//	console.log(`toTasks  after sort at id ${taskitem.id}`, taskitem.tos)
-			}
-		})
-
+	})
+	
 
 	//end of taskDtl
+
 	// bounds
+	const maxEndTime = Math.max(
+		...taskDtl.map((task) => task.start + task.duration)
+	)
+	// console.log(
+	// 	'max EndTime is',
+	// 	maxEndTime,
+	// 	'from ',
+	// 	taskDtl.map((task) => task.start + task.duration)
+	// )
+
 	const defaultGraphMargin = { top: 0, right: 30, bottom: 50, left: 0 }
 	const graphHeight = Math.max(taskIds.length + 1, 2) * iLayout.barSpacing
 	// iLayout.graphWidth = isNaN(Number(vw)) ? 600 : Math.min(600, vw)
@@ -266,13 +340,13 @@ export function Seq() {
 	const xScale = useMemo(
 		() =>
 			scaleLinear<number>({
-				domain: [Math.min(0), 100], //TODO Math.max(...tasks.map(task=>task.duration*2))],
+				domain: [Math.min(0), 100, maxEndTime],
 				range: [
 					iLayout.graphX0,
 					iLayout.graphWidth + iLayout.graphX0 - iLayout.graphPadRight,
 				],
 			}),
-		[iLayout.graphX0, iLayout.graphWidth + iLayout.graphPadRight]
+		[iLayout.graphX0, iLayout.graphWidth + iLayout.graphPadRight, maxEndTime]
 	)
 
 	const yScale = scaleLinear<number>({
@@ -313,10 +387,12 @@ export function Seq() {
 
 	const handleSvgMouseDown = (
 		e: React.MouseEvent,
+		// typeof e_SvgSender[ keyof typeof  e_SvgSender],
+		senderType: e_SeqDiagElement,
+		senderId: EntityId,
+		index: number,
 		x?: number,
-		y?: number,
-		senderType?: string,
-		senderId?: number
+		y?: number
 	) => {
 		// const { onDragStart, resetOnStart } = props
 		if (e !== undefined) {
@@ -327,10 +403,7 @@ export function Seq() {
 			//only run if not already dragging as you can move over multiple elements
 
 			// console.log(
-			// 	`dragstart from type ${senderType} ${senderId}, isDragging x,y`,
-			// 	x,
-			// 	y,
-			// x && xScale.invert(x),y && yScale.invert(y)
+			// 	`MouseDown dragStart from type ${senderType.toString()} -Entity: ${senderId}`
 			// )
 
 			let point = { x, y }
@@ -344,35 +417,78 @@ export function Seq() {
 						graphAreaRef.current !== undefined &&
 						graphAreaRef.current !== null
 					) {
-						let ppoint = localPoint(graphAreaRef.current, e)
-						console.log(`mouseDown ppoint`, ppoint, ` from`, e.target)
-						if (ppoint !== null && ppoint !== undefined) {
-							setDragStart({ x: ppoint.x, y: ppoint.y })
+						const gpoint: Point = gPoint(e) || ({ x: -1, y: -1 } as Point) // use -1 as invalid value
+						let ppoint = { x: e.clientX, y: e.clientY }
+						// console.log(
+						// 	`mouseDown ppoint`,
+						// 	gpoint.y,
+						// 	` from`,
+						// 	e.target,
+						// 	' id ',
+						// 	senderId,
+						// 	'index ',
+						// 	index
+						// )
+
+						if (
+							senderType === e_SeqDiagElement.TaskBar &&
+							senderId != undefined
+						) {
+							setDragStart({
+								x: gpoint.x,
+								y: gpoint.y,
+								startId: senderId,
+								senderType,
+							})
+							//				console.log('mouseDown dragStart set to', dragStart)
+							setdragActionActive(dragAction.dragLine)
+							toggleMousedDown()
+							// console.log(`set dragstart at`, ppoint, ` from `, e.target)
+						} else {
+							alert('could not define start task')
 						}
-						console.log(`set dragstart at`, ppoint, ` from `, e.target)
-						setdragActionActive(dragAction.dragLine)
-						toggleMousedDown()
 					}
 				} else {
 					if (typeof x === 'number' && typeof y === 'number') {
-						setDragStart({ x: x, y: y })
-						setdragActionActive(dragAction.dragLine)
+						const yint = Math.trunc(yScale.invert(y))
+						const startTask = taskEnts[taskIds[yint]]
+						alert('broken code in setting numbers for dragging')
+						if (startTask != undefined) {
+							// setDragStart({ x: x, y: y ,senderType:startTask})
+							// setdragActionActive(dragAction.dragLine)
+							// 	}
+							// 		else{
+							// 		alert("could not define start task")
+						}
 					}
 				}
 			}
 		}
 	}
 
+	// const IsNewLinkPossible(startIndex:number,endIndex:number) =>	    {
+	// 			const startTask = taskDtl[taskIds.indexOf(startIndex)]
+	// 		const endTask = taskDtl[taskIds.indexOf(endIndex)]
+	// 		if( startIndex >0 && endIndex >0 &&	startIndex < endIndex && linkEnts){
+	// const	 linkMatched=	linkEnts.filter( (link:Link) => (linkEnts[link.id]?.from === startTask?.id && linkEnts[link.id]?.to === endTask.id				)
+	// 		}
+	// 		console.log(
+	// 			`MouseUp isLinkPossible from index ${startTask?.index} to index ${endTask?.index} is ${isLinkPossible}`
+	// 		)
+	// }
+
 	const handleSvgMouseUp = (
-		e?: React.MouseEvent<Element, MouseEvent>,
-		selInfo?: ISelItem //	|{x?: number,		y?: number}
+		e: React.MouseEvent<Element, MouseEvent>,
+		selItemUp: typeof e_SeqDiagElement[keyof typeof e_SeqDiagElement], //	|{x?: number,		y?: number}
+		id: EntityId,
+		index: number
 	) => {
 		let point: XY | undefined = undefined
 		// console.log('preparing Mouse up- isDragging', isDragging)
 		// const { onDragStart, resetOnStart } = props
 		if (e !== undefined) {
 			e.stopPropagation()
-			console.log(`handleMouseMoveUp`, e, selInfo)
+			// console.log(`handleMouseMoveUp`, e, selItemUp)
 			const ev = e as React.MouseEvent<Element, MouseEvent>
 			//use gPoint to get consistent ref point and avoid typo
 			if (ev !== undefined) {
@@ -388,16 +504,20 @@ export function Seq() {
 			const startTask = taskDtl[taskIds.indexOf(startIndex)]
 			const endTask = taskDtl[taskIds.indexOf(endIndex)]
 			isLinkPossible =
-				startIndex < endIndex &&
-				endTask?.froms.filter(
-					(link) => linkEnts[link.id]?.from === startTask?.id
-				).length === 0
-			console.log(
-				`MouseUp isLinkPossible`,
-				startTask?.index,
-				endTask?.index,
-				isLinkPossible
-			)
+				startIndex !== endIndex &&
+				endTask?.tos.filter((link) => linkEnts[link.id]?.from === startTask?.id)
+					.length === 0
+
+			if (startIndex !== endIndex) {
+				// 	console.log(
+				// 		`Return links are not programmed yet.MouseUp isLinkPossible from index ${startTask?.index} to index ${endTask?.index} is ${isLinkPossible}`
+				// 	)
+				// } else {
+				// console.log(
+				// 	`MouseUp isLinkPossible from index ${startTask?.index} to index ${endTask?.index} is ${isLinkPossible}`
+				// )
+			}
+
 			if (
 				dragActionActive === dragAction.dragLine &&
 				isLinkPossible &&
@@ -406,7 +526,7 @@ export function Seq() {
 			) {
 				// setdragActionActive(dragAction.canCreateLink)
 				//if (dragActionActive===dragAction.canCreateLink && !isLinkPossible &&startTask?.id && endTask?.id ) {
-				const newID = nextLinkId
+
 				//  if (linkEnts[newID]) {
 				// 	 while
 				// 	 console.log(`LinkID already in use`, newID, ' in ', linkIds)}
@@ -440,27 +560,39 @@ export function Seq() {
 		// 	}
 	}
 
-	const handleSvgMouseMove = (e: React.MouseEvent, selInfo?: ISelItem) => {
+	const handleSvgMouseMove = (
+		e: React.MouseEvent,
+		type: e_SeqDiagElement,
+		id: EntityId,
+		index: number
+	) => {
 		e.stopPropagation()
 		e.persist()
 
 		if (dragActionActive !== dragAction.none) {
-			console.log('mouse Move - isDragging', dragActionActive)
+			//	console.log('mouse Move - isDragging', dragActionActive)
 			//use gPoint to get consistent ref point and avoid typo
 			let mousePoint = gPoint(e)
 			if (mousePoint === null) mousePoint = undefined
 			// console.log('dragMove to position', mousePoint)
 			if (mousePoint && dragActionActive === dragAction.dragLine) {
 				//  check to see if a link can be made
-				if (Math.floor(dragStart?.x || 0) < Math.floor(mousePoint?.x || 0)) {
-					//  we have downward link attempt
+				if (Math.floor(dragStart?.x || 0) !== Math.floor(mousePoint?.x || 0)) {
+					//  we have  link attempt
 				}
 			}
 			// mouse move is capturing mouse up so need to check buttons
 			// cancel drag if mouse is up.
 			if (e.buttons === 0) {
-				console.log(`MouseMove button is up - selInfo -`, selInfo)
-				handleSvgMouseUp(e, selInfo)
+				// console.log(
+				// 	`MouseMove button is up - selInfo -`,
+				// 	type,
+				// 	' index ',
+				// 	index,
+				// 	' id ',
+				// 	id
+				// )
+				handleSvgMouseUp(e, type, id, index)
 
 				// now  cancel drag
 				setdragActionActive(dragAction.none)
@@ -468,11 +600,13 @@ export function Seq() {
 			} else {
 				//temporary lines are in unscaled coords
 				setMousepos(mousePoint)
-				console.log(
-					'MouseMove started start, current, selInfo',
-					dragStart,
-					mousePoint
-				)
+
+				// console.log(
+				// 	'MouseMove started start ${dragStart.x) current, selInfo',
+				// 	dragStart,
+				// 	mousePoint
+				// )
+
 				// setActiveTask(undefined)
 				//if (dragActionActive == dragAction.none) {
 				if (dragStart !== undefined && mousepos !== undefined) {
@@ -490,7 +624,12 @@ export function Seq() {
 							],
 						}
 					}
-					console.log(`mousemove, selInfo`, mousepos.x, mousepos.y, e.target)
+					// console.log(
+					// 	`mousemove dragto, selInfo`,
+					// 	mousepos.x,
+					// 	mousepos.y,
+					// 	e.target
+					// )
 					// const newConnectors = connectors.concat(newPath)
 
 					// setconnectors(newConnectors)
@@ -514,21 +653,75 @@ export function Seq() {
 	}
 	const [dragcontext, setDragcontext] = useState(DragContextItem)
 
-	const DrawDragLine = () => {
-		if (dragActionActive === dragAction.none) return null
-		const endSize = dragActionActive === dragAction.canCreateLink ? 5 : 2
+	const matchLinks = (
+		dragStartTaskId: EntityId,
+		dragEndTaskId: EntityId
+	): boolean => {
+		// console.log('drag ,', dragStart, ' --', dragStart?.startId, linkEnts)
+		// if (dragStart?.startId === undefined || linkEnts === undefined) {
+		// 	return false}
 
-		console.log(
-			'dragActionActive, to mousepos.x',
-			dragActionActive,
-			yScale.invert(dragStart?.y || 0),
-			yScale.invert(mousepos?.y || 0)
+		var matchItems = _.find(
+			linkEnts,
+			(linkitem) =>
+				linkitem?.from === dragStartTaskId && linkitem.to == dragEndTaskId
 		)
+		// console.log('matchItems inside MatchLink are: ', matchItems)
+		if (matchItems !== undefined) {
+			//		console.log('mouse link already exists: ', matchItems)
+			return true
+		} else {
+			return false
+		}
+	}
+
+	const DrawDragLine = () => {
+		const [drawdragStyle, setDrawdragStyle] = useState<string>('orange')
+		// early exit if dragAction is none
+		if (dragActionActive === dragAction.none) return null
+		//earlyy exit if start task does not exist
+		if (dragStart?.startId === undefined) return null
+
+		const dragToTaskIndex = Math.floor(yScale.invert(mousepos?.y || -1))
+		const linkAlreadyExists =
+			dragToTaskIndex == -1
+				? false
+				: matchLinks(dragStart?.startId, taskIds[dragToTaskIndex])
+
+		// console.log(
+		// 	`mouse dragActionActive, ${dragActionActive} from indexY ${dragToTaskIndex} to mousepos.x`,
+		// 	dragActionActive
+		// )
+
+		//	const startTaskId = dragStart?.startId
+
 		if (
 			dragStart !== undefined &&
 			mousepos !== undefined &&
 			dragActionActive === dragAction.dragLine
 		) {
+			//define cursor style
+			const endSize =
+				linkAlreadyExists ||
+				dragStart.startId === (taskIds[dragToTaskIndex] ?? -1)
+					? 2
+					: 5
+			// console.log(
+			// 	`endsize ${endSize} startID ${dragStart.startId} endId ${
+			// 		taskIds[dragToTaskIndex] ?? -1
+			// 	} linkAlreadyExists ${linkAlreadyExists}`
+			// )
+
+			// define color for return loops
+			const endColor =
+				!linkAlreadyExists &&
+				dragToTaskIndex >= 0 &&
+				taskIds &&
+				taskIds.indexOf(dragStart.startId) > dragToTaskIndex
+					? 'purple'
+					: 'green'
+			// console.log(`endcolor ${endColor}`)
+
 			return (
 				<>
 					<line
@@ -537,14 +730,17 @@ export function Seq() {
 						y1={dragStart.y}
 						x2={mousepos.x}
 						y2={mousepos.y}
-						stroke='purple'
+						stroke={linkAlreadyExists === true ? 'red' : endColor}
+						strokeDasharray={linkAlreadyExists == true ? '5,5' : '0,0'}
 						strokeWidth='2'
 					/>
 					<circle
+						// cursor={(linkAlreadyExists===true  && dragStart.startId !== dragToTaskIndex) ? 'not-allowed' : 'crosshair'}
 						className='dragCircle'
 						cx={mousepos.x}
 						cy={mousepos.y}
-						stroke='purple'
+						stroke={endColor}
+						fill={endColor}
 						strokeWidth='2'
 						// fill='none'
 						r={endSize}
@@ -594,93 +790,146 @@ export function Seq() {
 	}
 
 	const dragposTxt = `Mouse Down Start x= ${
-		dragStart && toNum2(dragStart.x)
-	} , ${dragStart && toNum2(dragStart.y)} scaled to ${
-		(dragStart?.x && xScale.invert(dragStart.x))?.toFixed(1) || '-'
+		dragStart && toNum2(dragStart?.x || -999)
+	} , ${dragStart && toNum2(dragStart?.y)} scaled to ${
+		(dragStart?.x && dragStart?.x)?.toFixed(1) || '-'
 	}
-	 , 	${(dragStart?.y && yScale.invert(dragStart.y)?.toFixed(1)) || '-'}`
-	const mouseposTxt = `Mouse Move to  x= ${mousepos && toNum2(mousepos.x)} , ${
-		mousepos && toNum2(mousepos.y)
-	}  scaled to ${(mousepos?.x && xScale.invert(mousepos.x))?.toFixed(1) || '-'}
-	 , 	${(mousepos?.y && yScale.invert(mousepos.y)?.toFixed(1)) || '-'}`
+	 , 	${((dragStart?.y && dragStart?.y) || -999)?.toFixed(1) || '-'}`
+
+	const mouseposTxt = `Mouse Move to  x= ${
+		mousepos && toNum2(mousepos?.x || -999)
+	} , ${mousepos && toNum2(mousepos?.y || -999)}  scaled to ${
+		(mousepos?.x && xScale.invert(mousepos?.x || -999))?.toFixed(1) || '-'
+	}
+	 , 	${(mousepos?.y && yScale.invert(mousepos?.y || -999)?.toFixed(1)) || '-'}`
 
 	// console.log(`taskIds, taskEnts`, taskIds, taskEnts)
 
 	const TaskBars = () => {
-		//useMemo(() => {
-		const output = useMemo(
-			() =>
-				taskDtl.map((taskItem, index) => {
-					// taskIds.map((id, index) => {
-					//if (id ===undefined) {returnnull)}
-					//	console.log(`taskEnts, id`, taskEnts, taskEnts[id])
-					// const taskItem = taskDtl.find(item=>item.id===id)
-					//const taskItem = taskDtl[index]
-					if (taskItem === undefined) {
-						return <text>{`Undefined item at index ${index}`}</text>
-					}
-					const taskname: string = taskItem.name || ''
-					// need to get start and end as xscale allows for left offsets and it gets double counted
-					const xStart = xScale(taskItem.start)
-					const xEnd = xScale(taskItem.duration + taskItem.start) || 0
-					const ytop = index * iLayout.barSpacing + iLayout.barPad
-					const barHeight = Math.round(iLayout.barSpacing - 2 * iLayout.barPad)
+		const output =
+			//useMemo(			() =>
+			taskDtl.map((taskItem, index) => {
+				// taskIds.map((id, index) => {
+				//if (id ===undefined) {returnnull)}
+				//	console.log(`taskEnts, id`, taskEnts, taskEnts[id])
+				// const taskItem = taskDtl.find(item=>item.id===id)
+				//const taskItem = taskDtl[index]
+				if (taskItem === undefined) {
+					return <text>{`Undefined item at index ${index}`}</text>
+				}
+				const taskname: string = taskItem.name || ''
+				// need to get start and end as xscale allows for left offsets and it gets double counted
+				const xStart = xScale(taskItem.start)
+				const xEnd = xScale(taskItem.duration + taskItem.start) || 0
+				const ytop = index * iLayout.barSpacing + iLayout.barPad
+				const barHeight = Math.round(iLayout.barSpacing - 2 * iLayout.barPad)
+				const fillColor = 'pink'
 
-					const fill = 'pink'
-					const handleLocalMouseDown = (e: React.MouseEvent) => {
-						handleSvgMouseDown(e, undefined, undefined, SelTypes.TaskBar, index)
-					}
-					const handleLocalMouseUp = (
-						e: React.MouseEvent,
-						selInfo?: ISelItem
-					) => {
-						// console.log(`Mouseup on taskbar `, selInfo)
-						handleSvgMouseUp(e, selInfo)
-					}
-
-					return (
-						<TaskBar
-							key={`TaskBar ${taskItem.id}`}
-							taskDtl={taskItem}
-							ytop={ytop}
-							index={index}
-							barHeight={barHeight}
-							xEnd={xEnd}
-							xStart={xStart}
-							fill={fill}
-							onMouseDown={handleLocalMouseDown}
-							onMouseMove={handleSvgMouseMove}
-							onMouseUp={handleLocalMouseUp}
-							iLayout={iLayout}
-						></TaskBar>
+				const handleLocalMouseDown = (
+					e: React.MouseEvent,
+					index: number,
+					taskId: EntityId
+				) => {
+					handleSvgMouseDown(e, e_SeqDiagElement.TaskBar, taskItem.id, index)
+				}
+				const handleLocalMouseUp = (
+					e: React.MouseEvent,
+					selInfo: typeof e_SeqDiagElement[keyof typeof e_SeqDiagElement],
+					id: EntityId,
+					index: number
+				) => {
+					// console.log(`Mouseup on taskbar `, selInfo)
+					handleSvgMouseUp(e, e_SeqDiagElement.TaskBar, id, index)
+				}
+				const handleLocalMouseEnter = (
+					e: React.MouseEvent,
+					index: number,
+					taskId: EntityId
+				): void => {
+					// console.log(
+					// 	'Seq Chart entered taskid ',
+					// 	taskId,
+					// 	'dragInfo ',
+					// 	dragStartInfo
+					// )
+					if (
+						taskDtl[index]?.tos?.filter(
+							(tolink: Link) => tolink.id === dragStartInfo?.startId
+						).length > 0
 					)
-				}),
-			[taskIds]
-		)
+						alert('link already exists')
+				}
+				const taskExtraClasses = 'nodrop'
+
+				return (
+					<TaskBar
+						key={`TaskBar ${taskItem.id}`}
+						taskDtl={taskItem}
+						ytop={ytop}
+						index={index}
+						barHeight={barHeight}
+						xEnd={xEnd}
+						xStart={xStart}
+						fill={fillColor}
+						extraClasses={taskExtraClasses}
+						onMouseDown={(e: React.MouseEvent) =>
+							handleLocalMouseDown(e, index, taskItem.id)
+						}
+						onMouseEnter={(e: React.MouseEvent) =>
+							handleLocalMouseEnter(e, index, taskItem.id)
+						}
+						onMouseMove={(e: React.MouseEvent) =>
+							handleSvgMouseMove(
+								e,
+								e_SeqDiagElement.TaskBar,
+								taskItem.id,
+								index
+							)
+						}
+						onMouseUp={(e: React.MouseEvent) =>
+							handleLocalMouseUp(
+								e,
+								e_SeqDiagElement.TaskBar,
+								taskItem.id,
+								index
+							)
+						}
+						iLayout={iLayout}
+					></TaskBar>
+				)
+			})
+		//		,[taskIds, xScale, taskEnts]
+		//	)
 		return <g>{output}</g>
 	}
 
-	const handleMouseEnter = (selInfo: ISelItem) => {
+	const handleMouseEnter = (selInfo: ISelDiagItem) => {
 		//	console.log('entered Task - index:', index,taskDtl.id, e.target)
 		dispatch(setMouseOverItem(selInfo))
 		// onMouseEnter && onMouseEnter(e)
 	}
-	const handleMouseLeave = (selInfo: ISelItem) => {
+	const handleMouseLeave = (selInfo: ISelDiagItem) => {
 		//	console.log('entered Task - index:', index,taskDtl.id, e.target)
 		dispatch(resetMouseOverItem(selInfo))
 		// onMouseEnter && onMouseEnter(e)
 	}
-	const handleMouseUp = (selInfo: ISelItem) => {
+	const handleMouseUp = (selInfo: ISelDiagItem) => {
 		//	console.log('entered Task - index:', index,taskDtl.id, e.target)
-		dispatch(toggleSelectedItem(selInfo))
-		debugger
+		dispatch(toggleDiagSelectedItem(selInfo))
+		//debugger
 		// onMouseEnter && onMouseEnter(e)
 	}
-
-const handleKeyPressApp=(e:React.KeyboardEvent<HTMLElement>) =>{
-	if (e.key === 'Escape') console.log(`Escape`, e.key)
-}
-
+	//TODO working on delete of items here
+	const handleKeyPressApp = (e: React.KeyboardEvent<HTMLElement>) => {
+		if (e.key === 'Escape') console.log(`Escape`, e.key)
+		if (mOverItem?.type === e_SeqDiagElement.Link) {
+			const delId = mOverItem?.id
+			if (delId !== undefined) {
+				console.log('about to delete Link:', delId)
+				mOverItem.id && dispatch(linksRemoveMany([delId]))
+			}
+		}
+	}
 
 	const DrawLinks = MakeDrawLinks(
 		taskDtl,
@@ -688,8 +937,7 @@ const handleKeyPressApp=(e:React.KeyboardEvent<HTMLElement>) =>{
 		xScale,
 		yScale,
 		handleMouseEnter,
-		handleMouseLeave,
-
+		handleMouseLeave
 	) // ,[taskDtl,iLayout,xScale,yScale] )
 
 	const DrawInPorts = () => {
@@ -698,8 +946,8 @@ const handleKeyPressApp=(e:React.KeyboardEvent<HTMLElement>) =>{
 				task.tos.map((taskItem, index) => {
 					let targetTask = taskDtl.find((item) => item.id === taskItem.from)
 					if (targetTask === undefined) return null
-					const selInfo: ISelItem = {
-						type: 'taskPortIn',
+					const selInfo: ISelDiagItem = {
+						type: e_SeqDiagElement.PortIn,
 						id: targetTask.id,
 						sname: `InPort${targetTask?.name} -port ${index}`,
 						desc: `${targetTask?.name} -port ${index}`,
@@ -732,8 +980,8 @@ const handleKeyPressApp=(e:React.KeyboardEvent<HTMLElement>) =>{
 							width={iLayout.portTriLength * iLayout.barSpacing}
 							height={(iLayout.portTriLength / 2) * iLayout.barSpacing}
 							fill={'green'}
-							onMouseEnter={handleMouseEnter}
-							onMouseLeave={handleMouseLeave}
+							onMouseEnter={(e) => handleMouseEnter}
+							onMouseLeave={(e) => handleMouseLeave}
 							onMouseUp={(e) => handleMouseUp(selInfo)}
 						/>
 					)
@@ -743,39 +991,15 @@ const handleKeyPressApp=(e:React.KeyboardEvent<HTMLElement>) =>{
 		return <>{map2}</>
 	}
 
-	const txtMouseOver = mOverItem
-		? `Mouse Over type: ${mOverItem.type} - mouseOverid: ${mOverItem.id} - sname: ${mOverItem.sname}`
-		: 'mouseOveritem:'
+	// const txtMouseOver = mOverItem
+	// 	? `Mouse Over type: ${mOverItem.} - mouseOverid: ${mOverItem.id} - sname: ${mOverItem.sname}`
+	// 	: 'mouseOveritem:'
 
-	const selectedList = useAppSelector(selectedItems)
+	const selectedItemList = useAppSelector(selectedItems)
 	// -- render output starts
 	return (
 		<DragContext.Provider value={DragContextItem}>
-			<div className='seq graphContainer'
-			onKeyUp={handleKeyPressApp}
-			>
-				<p>{dragposTxt} </p>
-				<p>{mouseposTxt} </p>
-				<p>{txtMouseOver}</p>
-				<ul>
-					{selectedList.map((item, index) => (
-						<li key={index}>{item.sname}</li>
-					))}
-				</ul>
-				<p>xScale: {(xScale(2) - xScale(1)).toFixed(2)}</p>
-				<p>Selected item: </p>
-				  <div>
-      <div>Press any keyboard keys and they will appear below.</div>
-      <p>You have pressed</p>
-				{/* <RCV_Grid/> */}
-      <ul>
-        {keyInlist.map((k, i) => (
-          
-          <li key={`${i}_${k}`}>{k}</li>
-        ))}{' '}
-      </ul>
-		
-    </div>
+			<div className='seq graphContainer' onKeyUp={handleKeyPressApp}>
 				<svg
 					width={
 						iLayout.graphWidth + iLayout.graphPadLeft + iLayout.graphPadRight
@@ -785,6 +1009,7 @@ const handleKeyPressApp=(e:React.KeyboardEvent<HTMLElement>) =>{
 					{DrawTopAxis}
 				</svg>
 				<svg
+					className={seqCursorStyle}
 					x={iLayout.graphPadLeft}
 					y={iLayout.graphPadTop}
 					ref={graphAreaRef}
@@ -800,9 +1025,15 @@ const handleKeyPressApp=(e:React.KeyboardEvent<HTMLElement>) =>{
 						height={graphHeight}
 						fill={background}
 						rx={14}
-						onMouseDown={handleSvgMouseDown}
-						onMouseUp={handleSvgMouseUp}
-						onMouseMove={handleSvgMouseMove}
+						onMouseDown={(e: React.MouseEvent) =>
+							handleSvgMouseDown(e, e_SeqDiagElement.SeqChart, -1, -1)
+						}
+						onMouseUp={(e: React.MouseEvent) =>
+							handleSvgMouseUp(e, e_SeqDiagElement.SeqChart, -1, -1)
+						}
+						onMouseMove={(e: React.MouseEvent) =>
+							handleSvgMouseMove(e, e_SeqDiagElement.SeqChart, -1, -1)
+						}
 					/>
 					{/* <DrawRectGrid /> */}
 					{/* <MyTable/> */}
@@ -817,8 +1048,31 @@ const handleKeyPressApp=(e:React.KeyboardEvent<HTMLElement>) =>{
 						Time (Sec)
 					</text>
 				</svg>
-		
+				<div>
+					<p>xScale: {(xScale(2) - xScale(1)).toFixed(2)}</p>
+					<p>Selected item: </p>
+					{/* <p>Mouse is over item: {mouseOverItem??''} </p> */}
+
+					{/* //	<p>{dragposTxt} </p> */}
+					<p>{mouseposTxt} </p>
+					{/* <p>{txtMouseOver}</p> */}
+					{/* <ul>
+					{selectedItemList.map((item, index) => (
+						<li key={index}>{item.sname}</li>
+					))}
+				</ul> */}
+
+					<div>Press any keyboard keys and they will appear below.</div>
+					<p>You have pressed</p>
+
+					{/* <ul>
+						{keyInlist.map((k, i) => (
+							<li key={`${i}_${k}`}>{k}</li>
+						))}{' '}
+					</ul> */}
+				</div>
 			</div>
 		</DragContext.Provider>
 	)
+	
 }

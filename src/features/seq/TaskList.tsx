@@ -1,5 +1,5 @@
 import { useMeasure } from '@react-hookz/web'
-import { act } from '@testing-library/react'
+
 import React, {
 	useState,
 	ReactHTMLElement,
@@ -17,7 +17,7 @@ import { useSelector } from 'react-redux'
 import { useAppSelector } from '../../app/hooks/hooks'
 import { selTasks } from './seqSlice'
 import { Task } from './seqTypes'
-import TanTableResize from './TanTableResize'
+
 import './TaskList.scss'
 
 
@@ -291,13 +291,14 @@ console.log(`activeColRef`, activeColRef)
 	)
 	return (
 		<div>
-	<TanTableResize/>
+		'tantable resize removed'
+	{/* <TanTableResize/>
 			<p>{InfoLine}</p>
-			{/* <pre>{JSON.stringify(measurements)}</pre> */}
+			{/* <pre>{JSON.stringify(measurements)}</pre> 
 			<table ref={tableElement} className='tableList-wrapper tableList'>
 				<HeaderRow/>
 				{tRows}
-			</table>
+			</table> */}
 		</div>
 	)
 }

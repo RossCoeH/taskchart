@@ -14,7 +14,10 @@ import { useDebouncedState } from '@react-hookz/web'
 import EditableCell from '../Editable/EditableCell'
 import clx from 'classnames'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faGripVertical } from '@fortawesome/free-solid-svg-icons'
+import  {faGripVertical, fas} from '@fortawesome/free-solid-svg-icons'
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { background } from '../seq/Seq'
+//  library.add(faGripVertical)
 
 enum eCellType {
 	'id' = 'id',
@@ -83,8 +86,8 @@ const MyTable = (props: Partial<PropsWithRef<HTMLElement>>) => {
 			<div
 				className={isHeader ? clx(classes.dragCell, classes.th) : ' '}
 				onClick={handleClick}
-			>
-				<FontAwesomeIcon icon={faGripVertical} className={classes.gripIcon} />
+		>
+		"."
 			</div>
 		)
 	}
@@ -92,6 +95,7 @@ const MyTable = (props: Partial<PropsWithRef<HTMLElement>>) => {
 	const [isColDrag, setIsColDrag] = useState<number>(0)
 	const [activeColIdx, setActiveCol] = useState<number>(-1) // use -1 for not active so inded 0 can be tested
 const [mouseMovePosible, setMouseMovePosible] = useState<boolean>(true)
+const [activeEditCellKey, setActiveEditCellKey] = useState<string>("")
 	const [ptMouseStart, setPosMouseStart] = useState<
 		{ x: number; y: number } | undefined
 	>(undefined)
@@ -172,7 +176,7 @@ const [mouseMovePosible, setMouseMovePosible] = useState<boolean>(true)
 								</th>
 							)
 						else { // retrun lower cell
-							// const ref : (HTMLTableCellElement|undefined) =colRefs.current!  colRefs.current[idx] || undefined
+						// const ref : (HTMLTableCellElement|undefined) =colRefs.current!  colRefs.current[idx] || undefined
 							let colIsMinWidth: boolean = isColMinWidth(colRefs, idx, colDefs)
 
 							return (
@@ -284,22 +288,22 @@ const [mouseMovePosible, setMouseMovePosible] = useState<boolean>(true)
 		[activeColIdx, mouseMoveHandler]
 	)
 
-	useEffect(() => {
-		if (activeColIdx >= 0) {
-			window.addEventListener('mousemove', mouseMoveHandler)
-			window.addEventListener('mouseup', mouseUpHandler)
-			return () => {
-				window.removeEventListener('mousemove', mouseMoveHandler)
-				window.removeEventListener('mouseup', mouseUpHandler)
-			}
-		}
-	}, [mouseMoveHandler, mouseUpHandler])
+	// useEffect(() => {
+	// 	if (activeColIdx >= 0) {
+	// 		window.addEventListener('mousemove', mouseMoveHandler)
+	// 		window.addEventListener('mouseup', mouseUpHandler)
+	// 		return () => {
+	// 			window.removeEventListener('mousemove', mouseMoveHandler)
+	// 			window.removeEventListener('mouseup', mouseUpHandler)
+	// 		}
+	// 	}
+	// }, [mouseMoveHandler, mouseUpHandler])
 
 	//console.log(`tableRef.current`, tableRef.current)
 
 	useEffect(() => {
 		if (typeof tableRef.current === typeof HTMLTableElement) {
-			//	console.log(`${tableRef.current} -running tableHt effect`, tableRef.current!==null&& tableRef.current.offsetHeight, typeof tableRef.current)
+		console.log(`${tableRef.current} -running tableHt effect`, tableRef.current!==null&& tableRef.current.offsetHeight, typeof tableRef.current)
 			if (tableRef.current !== null) {
 				if (
 					tableRef.current !== null &&
@@ -337,10 +341,22 @@ const [mouseMovePosible, setMouseMovePosible] = useState<boolean>(true)
 				? ''
 				: 0
 		//	console.log(`Cell Value @ ${rowItem.id} ${colDefs[colIdx].ref} :`, value)
+
+		const startEdit=(e:any):void=>{
+			console.log("activecell set to")
+			setActiveEditCellKey (e.target?.mykey)
+			
+		}
+		const mykey:string=`cell ${rowItem.id}-col${colIdx}`
+		const isEditing =(activeEditCellKey===mykey)
+
 		return (
 			<EditableCell
-				mykey={`cell ${rowItem.id}-col${colIdx}`}
+				mykey={mykey}
 				editable={true}
+				isediting={isEditing}
+				setactive={()=>setActiveEditCellKey(mykey)}
+				onClick={(e:any)=>startEdit(e)}
 				value={value}
 				minNumber={
 					typeof value === 'number' && colDefs[colIdx]?.minNumber
@@ -357,8 +373,8 @@ const [mouseMovePosible, setMouseMovePosible] = useState<boolean>(true)
 
 	return (
 		<>
-			<p>mouse start {JSON.stringify(ptMouseStart?.x)}</p>
-			<p>mouse now {JSON.stringify(ptMouseNow?.x)} </p>
+			<p>my table mouse start {JSON.stringify(ptMouseStart?.x)}</p>
+			<p>my table mouse now {JSON.stringify(ptMouseNow?.x)} </p>
 			<p> colwidths: {JSON.stringify(colWidths)}</p>
 			<table className={classes.table} ref={tableRef}>
 				<Header />

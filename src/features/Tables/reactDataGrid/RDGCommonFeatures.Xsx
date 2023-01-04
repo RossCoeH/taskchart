@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom'
 import { css } from '@linaria/core';
-import DataGrid, { SelectColumn, TextEditor, SelectCellFormatter } from 'react-data-grid/';
+import DataGrid from 'react-data-grid/';
 import  { Column} from 'react-data-grid'
 import  { SortColumn } from 'react-data-grid/lib'
 // import { stopPropagation } from 'react-data-gri';
@@ -10,7 +10,8 @@ import {Task} from '../../seq/seqTypes'
 import { useAppSelector } from '../../../app/hooks/hooks';
 import { selTasks } from '../../seq/seqSlice'
 import {style} from "typestyle"
-
+import { EntityId } from '@reduxjs/toolkit';
+//NOTE DOES NOT WORK AS ROW KEY MUST BE A NUMBER
 
 const toolbarClassname = css`
   text-align: right;
@@ -57,7 +58,7 @@ interface SummaryRow {
 }
 
 interface Row extends Task{
-  id: number;
+  id: EntityId;
   name: string;
   duration: number;
 }
@@ -156,7 +157,7 @@ function getColumns(countries: string[]): readonly Column<ICol<Task>>[] {
 }
 
 function rowKeyGetter(row: Row) {
-  return row.id;
+  return row.id as string;
 }
 
 

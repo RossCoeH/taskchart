@@ -7,14 +7,14 @@ import { selTasks } from './seq/seqSlice'
 import { Task } from './seq/seqTypes'
 import { EntityId } from '@reduxjs/toolkit'
 import { NamedTupleMember } from 'typescript'
-import { useDebouncedState } from '@react-hookz/web'
+import { useDebouncedState } from '@react-hookz/web' // https://github.com/react-hookz/web
 
 // based on https://codepen.io/adam-lynch/pen/GaqgXP
 // https://adamlynch.com/flexible-data-tables-with-css-grid/
 
 // Our real web app uses Vue.js but I'll stick to plain JavaScript here
 const MyTsGrid = () => {
-	const minColWidth = 50
+	const minColWidth = 50 
 	// The max (fr) values for grid-template-columns
 	enum columnTypeToRatioMap {
 		numeric = 1,
@@ -137,7 +137,7 @@ const [ptMouseNow, setPtMouseNow] = useDebouncedState<{x:number,y:number}|undefi
 		const inner =  colDefs.map((item, index) => {
       console.log(`item.title, item.ref,item = `, item.title, item.ref,item )
       return (
-			<th key ={item.ref} className={clx(headerBeingResized)}>
+			<th key ={item.ref} className={clx("headerBeingResized")}>
 				<span>
 					{item.title}
 					<div
@@ -163,7 +163,9 @@ interface IRowItem{
 	)
 
 
-	const headerBeingResized = useRef<HTMLTableCellElement|null>(null)
+	const headerBeingResized = useRef<HTMLTableCellElement[]|null|string>(null)
+
+
 
 	// The next three functions are mouse event callbacks
 

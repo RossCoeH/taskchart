@@ -60,6 +60,7 @@ const getStyles = (props, disableResizing = false, align = 'left') => [
   },
 
 ]
+	const data = useAppSelector(selTasks.selectAll)
 
   // const headerProps = <T extends Record<string, unknown>>(props: any, { column }: Meta<T, { column:( HeaderGroup<T> &  {align?:string} )}>) =>
 
@@ -75,11 +76,45 @@ const TableHooks = [
   //selectionHook,
 ]
 
+const DraggableRow: FC<{
+  row: Row<Person>
+  reorderRow: (draggedRowIndex: number, targetRowIndex: number) => void
+}> = ({ row, reorderRow }) => {
+  const [, dropRef] = useDrop({
+    accept: 'row',
+    drop: (draggedRow: Row<Task>) => reorderRow(draggedRow.index, row.index),
+  })
+
+  const [{ isDragging }, dragRef, previewRef] = useDrag({
+    collect: monitor => ({
+      isDragging: monitor.isDragging(),
+    }),
+    item: () => row,
+    type: 'row',
+  })
+
+  return (
+    <tr
+      ref={previewRef} //previewRef could go here
+      style={{ opacity: isDragging ? 0.5 : 1 }}
+    >
+      <td ref={dropRef}>
+        <button ref={dragRef}>🟰</button>
+      </td>
+      {row.getVisibleCells().map(cell => (
+        <td key={cell.id}>
+          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+        </td>
+      ))}
+    </tr>
+  )
+}
   // =================Table===========================
 // export function Table<T extends Record<string, unknown>>(props: PropsWithChildren<TableProperties<T>>): ReactElement {
 
 export function Table(props) {
-const{ columns,data}=props
+const{ columns}=props
+  //console.log(data)
   const defaultColumn = React.useMemo(
     () => ({
        Header: DefaultHeader,
@@ -272,7 +307,7 @@ const  TanTableResize=(props)=> {
      
 
 const tasks = useAppSelector(selTasks.selectAll)||[]
-// const data:Record<(string|number),Task>[]=tasks.map(item=>(item.id,{item}))
+//const data:Record<(string|number),Task>[]=tasks.map(item=>(item.id,{item}))
 
 const data=tasks.map(item=>(item.id,{item}))
 //  const data:Array<Record<(string|number),unknown>>=useMemo(

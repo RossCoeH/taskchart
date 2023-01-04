@@ -1,15 +1,17 @@
 import React from 'react';
 
-import { Grommet, Box, DataTable, Heading ,ColumnConfig,
-ColumnSizeType} from 'grommet';
+import { Grommet, Box,TableHeader, TableRow, DataTable, Heading ,ColumnConfig,
+ColumnSizeType,
+TableCell,
+Table} from 'grommet';
 import { grommet, } from 'grommet/themes';
 
-interface Idata{
-  location:string,
-  date:string,
-  percent:number,
-  paid:number
-}
+// interface Idata{
+//   location:string,
+//   date:string,
+//   percent:number,
+//   paid:number
+// }
 
 const DATA = [
   {
@@ -62,27 +64,42 @@ const DATA = [
   },
 ];
 
-const columnsResize:ColumnConfig<Idata>[] = [
+const columnsData= [
   { property: 'location', header: 'Location', size: 'small',align: 'end'},
   { property: 'date', header: 'Date', size: 'small', align: 'end' },
   { property: 'percent', header: 'Percent', size: 'xsmall', align: 'end' },
   { property: 'paid', header: 'Paid', size: 'xsmall', align: 'end' },
 ];
 
-export const ResizableDataTable = () => (
-  <Grommet theme={grommet}>
-    <Box align="center" pad="large">
-      <Heading level="3">Table with resizable & column sizes</Heading>
-      <DataTable
-        columns={columnsResize}
-        data={DATA}
-        primaryKey={false}
-        resizeable
-      />
-    </Box>
-  </Grommet>
-);
 
-ResizableDataTable.storyName = 'Resizable columns';
+function dtable(){
+  return(
+    
+        <DataTable
+          columns={columnsData}
+          data={DATA}
+          primaryKey={false}
+          step={10}
+          resizeable={true} />
+  )
+}
 
-export default ResizableDataTable
+export const GrommetTable = () => {
+  return (
+    <Grommet theme={grommet}>
+      <Heading level="3">Grommet Table with resizable & column sizes</Heading>
+      <Box align="center" pad="large">
+        <DataTable
+          columns={columnsData}
+          data={DATA}
+          primaryKey={false}
+          step={10}
+          resizeable={true} />
+      </Box>
+    </Grommet>
+  );
+};
+ //{title:"Grommet Table Data"}
+GrommetTable.storyName = 'Resizable columns';
+
+export default  GrommetTable
