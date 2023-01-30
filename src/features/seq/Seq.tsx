@@ -1,15 +1,7 @@
 import React, {
-	createContext,
-	useContext,
-	LegacyRef,
-	ReactSVGElement,
-	RefObject,
 	useMemo,
 	useRef,
 	useState,
-	ReactNode,
-	KeyboardEvent,
-	useEffect,
 } from 'react'
 import * as _ from 'lodash'
 
@@ -17,9 +9,9 @@ import { Group } from '@visx/group'
 // import { curveBasis } from '@visx/visx'
 // import { LinePath } from '@visx/visx'
 // import { XYChart } from '@visx/visx'
-import { scaleTime, scaleLinear, Links, LinePath } from '@visx/visx'
+import { scaleLinear} from '@visx/visx'
 import { AxisTop, AxisBottom } from '@visx/visx' ///axis'
-import { GridRows, GridColumns, Grid } from '@visx/visx'
+import { GridRows, GridColumns } from '@visx/visx'
 //import react-spring from '@visx/react-spring'
 import { localPoint } from '@visx/visx'
 import { Point } from '@visx/visx'
@@ -27,12 +19,7 @@ import { useViewport } from 'react-viewport-hooks'
 import { useAppSelector, useAppDispatch } from '../../app/hooks/hooks'
 import { initialLayout } from './initValues'
 import {
-	decrement,
-	increment,
-	incrementByAmount,
-	incrementAsync,
-	incrementIfOdd,
-	selectCount,
+
 	selTasks,
 	selLinks,
 	EntArrayToAdapter,
@@ -50,6 +37,10 @@ import {
 	removeSelectedItem,
 	removeAllSelectedItems,
 	linksRemoveMany,
+	selectTasksAll,
+	selectLinksAll,
+	linkUpdateCount,
+	taskUpdateCount,
 } from './seqSlice'
 import {
 	Link,
@@ -59,6 +50,9 @@ import {
 	ILayout,
 	e_SeqDiagElement,
 	ISelDiagItem,
+	IBranchLink,
+	ILinkIn,
+	ILinkOut,
 } from './seqTypes'
 import styles from './Seq.module.scss'
 import { useSelector } from 'react-redux'
@@ -75,15 +69,12 @@ import { DragContext, IDragContext } from './dragContext'
 import PortDot from './PortDot'
 import PortTriangle from './PortTriangle'
 import DrawPath from './DrawPath'
-import { JsxElement } from 'typescript'
 import MakeDrawLinks from './MakeDrawLinks'
 import { useClickOutside, useKeyboardEvent, useToggle } from '@react-hookz/web'
-import { options, string } from 'yargs'
 import TaskList from './TaskList'
-import RCV_Grid from '../RVG_table/RCV_grid'
-import { Color } from 'jspdf-autotable'
-import { Sorting } from '@tanstack/react-table'
 import { assert, debug } from 'console'
+import { ScaleLinear } from 'd3-scale'
+import taskGetDtl from './TaskGetDtl'
 //import MyTable from '../Tables/MyTable'
 
 interface IStartMouseDrag {
@@ -124,11 +115,6 @@ enum dragAction {
 	pan = 'pan',
 }
 
-export const outPort_x = (taskItem: ITaskDtl, taskIndex: number | string) => {
-	const output = taskItem.start + taskItem.duration / 2
-	// console.log(`taskIndex @${taskIndex} ,  outPortx=${output} -`, taskItem)
-	return output
-}
 
 export function Seq() {
 	const dispatch = useAppDispatch()
@@ -164,6 +150,8 @@ export function Seq() {
 	const [connectors, setconnectors] = useState([initialConnector])
 	const taskIds = useAppSelector((state) => state.seq.tasks.ids)
 	const taskEnts = useAppSelector((state) => state.seq.tasks.entities) || {}
+	const taskList = useAppSelector(selectTasksAll) || {};
+	const linkList = useAppSelector(selectLinksAll) || {}
 	const linkIds = useAppSelector((state) => state.seq.links.ids)
 	const linkEnts = useAppSelector((state) => state.seq.links.entities)
 	const linksAll = useAppSelector((state) => selLinks.selectAll(state))
@@ -191,7 +179,9 @@ export function Seq() {
 		true,
 		(e) => {
 			console.log('keyup event', e)
-			setKeyInList((l) => l.slice(-5).concat([e.key]))
+			if (e.key === 'Delete') {
+			}
+			setKeyInList((l) => l.slice(-5).concat([e.key])) //logging keys
 		},
 		[],
 
@@ -207,120 +197,13 @@ export function Seq() {
 		)
 	}
 
-	let taskDtl: ITaskDtl[] = []
-
-	const getTaskDEndTime = (taskId: EntityId) => {
-		if (taskId === undefined) alert('error in finding taskId')
-
-		const index = taskIds.indexOf(taskId)
-		const etime =
-			taskDtl[index]?.start || 0 + (taskDtl[index]?.duration || 0) || 0
-		// console.log(`index ${index} -taskid ${taskId} -etime ${etime}`)
-		// console.log(`index ${index} taskD.get `, taskDtl[index], taskDtl)
-		return etime
-	}
-
-	taskIds.map((taskid, index) => {
-		const ctask = taskEnts[taskid]
-		// console.log(
-		// 	`preparing taskDtl for index ${index} - taskId ${taskid} `,
-		// 	ctask
-		// )
-		//	console.log(`index ${index} - task`, taskid, ctask)
-		let fromTasks = linksAll.filter(
-			(link) =>
-				link.from === taskid &&
-				taskIds.indexOf(link.from) < taskIds.indexOf(link.to)
-			// from tasks only exist if they start from an earlier index
-		)
-
-		const retTasks = linksAll.filter(
-			(link) =>
-				link.to === taskid &&
-				taskIds.indexOf(link.from) > taskIds.indexOf(link.to)
-			// retTasks only exist if they start from an later index
-		)
-
-		const toTasks = linksAll.filter((link) => link.to == taskid)
-
-		//  get start time - only those earlier than current will have defined times so ignore undefined values
-		let startTime = 0
-		toTasks.map((link) => {
-			//const tDtl = 	(taskDtl && tid !==undefined&& taskDtl.hasOwnProperty(tid))? taskDtl[tid] :undefined
-			const itemIndex = taskDtl.findIndex((item) => item.id === link.from)
-			// console.log(`fromTasks.map item`, itemIndex, taskDtl[itemIndex])
-			// const endtime: number = ((taskD[itemIndex]?.start || 0) + (taskD[itemIndex]?.duration || 0) )
-			const endtime: number =
-				itemIndex >= 0
-					? (taskDtl[itemIndex].start || 0) + (taskDtl[itemIndex].duration || 0)
-					: 0
-			// findIndex returns -1 if not found
-			if (endtime && endtime > startTime) startTime = endtime
-		})
-
-		taskDtl.push({
-			id: ctask?.id || 0,
-			name: ctask?.name || '',
-			duration: ctask?.duration || 0,
-			index: index,
-			froms: fromTasks,
-			rets: retTasks,
-			tos: toTasks,
-			start: startTime,
-		})
-	})
-
-	//		console.log(`taskDtl`, taskDtl)
-	// now need to sort to arrows so the index is based on start time of predecessor link.from
-	// this is used to avoid path line crossing
-	taskDtl.forEach((taskitem, index, taskDtl) => {
-		// now sort froms based on starttimes + duration of predecessor - earliest is last
-		/* 				console.log(
-					`toTasks ${taskitem.id}`)
-					taskitem.tos.map((link,index )=>
-						console.log(
-							`index ${index} Link ${link.id} - start time`,
-							link,
-							getTaskDEndTime(link.from)
-						)
-					) */
-		
-		console.log(`taskitem ${index} ${taskitem.name} `, taskitem)
-		taskitem.froms.sort(
-			(aTask, bTask) =>
-				//		(outPort_x(taskDtl[aTask.from],0) - outPort_x(taskDtl[bTask.from],0)) * -1.0
-				taskDtl.findIndex((tt) => tt.id === aTask.to) -
-				taskDtl.findIndex((tt) => tt.id === bTask.to)
-		)
-		if (taskitem.index === 4) console.log('Before tos Sorting', taskitem.tos)
-		
-		taskitem.tos.sort(
-			(aTask, bTask) => {
-	
-				if (aTask.from === undefined || bTask.from === undefined) return 0
-				const aTaskDtlfromIndex = taskDtl.findIndex((tt) => tt.id === aTask.from)
-				const bTaskDtlfromIndex = taskDtl.findIndex((tt) => tt.id === bTask.from)
-
-				// if index is -1 then item was nto found - return as no change
-				if (aTaskDtlfromIndex === -1 || bTaskDtlfromIndex === -1) return 0
-
-				//		(outPort_x(taskDtl[aTask.from],0) - outPort_x(taskDtl[bTask.from],0)) * -1.0
-				
-				const timeEndA=	taskDtl[ aTaskDtlfromIndex ].start + taskDtl[ aTaskDtlfromIndex ].duration 
-				const timeEndB = taskDtl[ bTaskDtlfromIndex ].start + taskDtl[ bTaskDtlfromIndex ].duration
-				if(taskitem.index===4) console.log('aIndex',aTaskDtlfromIndex, 'bIndex',bTaskDtlfromIndex,  'timeEndA', timeEndA, ' timeEndB', timeEndB)
-				return (timeEndA>timeEndB)? -1.0:1.0
-			})
-		 if(taskitem.index===4) console.log('After tos Sorting', taskitem.tos)
-
-	})
-	
-
-	//end of taskDtl
+	//let taskDtl: ITaskDtl[] = []
+	const taskDtl =  taskGetDtl(taskList, linkList)
+	//,[linkUpdateCount,taskUpdateCount])
 
 	// bounds
 	const maxEndTime = Math.max(
-		...taskDtl.map((task) => task.start + task.duration)
+		...taskDtl.map((task) => task.endTime)
 	)
 	// console.log(
 	// 	'max EndTime is',
@@ -394,6 +277,7 @@ export function Seq() {
 		x?: number,
 		y?: number
 	) => {
+		
 		// const { onDragStart, resetOnStart } = props
 		if (e !== undefined) {
 			e.stopPropagation()
@@ -401,7 +285,7 @@ export function Seq() {
 		}
 		if (dragActionActive === dragAction.none) {
 			//only run if not already dragging as you can move over multiple elements
-
+     
 			// console.log(
 			// 	`MouseDown dragStart from type ${senderType.toString()} -Entity: ${senderId}`
 			// )
@@ -409,8 +293,8 @@ export function Seq() {
 			let point = { x, y }
 			//check to see if x & y is given
 			if (
-				(x === undefined || y === undefined) &&
-				graphAreaRef.current !== undefined
+				(x === undefined || y === undefined) ||
+				graphAreaRef.current === undefined
 			) {
 				if (graphAreaRef !== null) {
 					if (
@@ -449,8 +333,9 @@ export function Seq() {
 						}
 					}
 				} else {
-					if (typeof x === 'number' && typeof y === 'number') {
-						const yint = Math.trunc(yScale.invert(y))
+					if (typeof x === 'number' && typeof y === 'number' && x !== undefined && y !== undefined) {
+						if (y ===undefined)return
+						const yint = Math.trunc(yScale.invert(y as number))
 						const startTask = taskEnts[taskIds[yint]]
 						alert('broken code in setting numbers for dragging')
 						if (startTask != undefined) {
@@ -499,16 +384,17 @@ export function Seq() {
 			// check if link avail
 			const endIndex = Math.floor(yScale.invert(mousepos?.y || 0))
 			const startIndex = Math.floor(yScale.invert(dragStart?.y || 0))
-			let isLinkPossible = false
+			let isLinkPossible = false  // assume not possible
 
-			const startTask = taskDtl[taskIds.indexOf(startIndex)]
-			const endTask = taskDtl[taskIds.indexOf(endIndex)]
+			const startTask = taskDtl[startIndex]
+			const endTask = taskDtl[endIndex]
 			isLinkPossible =
 				startIndex !== endIndex &&
-				endTask?.tos.filter((link) => linkEnts[link.id]?.from === startTask?.id)
-					.length === 0
+				endTask?.inLinks.filter(
+					(link) => linkEnts[link.fromTaskIndex]?.from === startTask.id
+				).length === 0
 
-			if (startIndex !== endIndex) {
+			if (startIndex <= endIndex) {
 				// 	console.log(
 				// 		`Return links are not programmed yet.MouseUp isLinkPossible from index ${startTask?.index} to index ${endTask?.index} is ${isLinkPossible}`
 				// 	)
@@ -675,82 +561,14 @@ export function Seq() {
 		}
 	}
 
-	const DrawDragLine = () => {
-		const [drawdragStyle, setDrawdragStyle] = useState<string>('orange')
-		// early exit if dragAction is none
-		if (dragActionActive === dragAction.none) return null
-		//earlyy exit if start task does not exist
-		if (dragStart?.startId === undefined) return null
-
-		const dragToTaskIndex = Math.floor(yScale.invert(mousepos?.y || -1))
-		const linkAlreadyExists =
-			dragToTaskIndex == -1
-				? false
-				: matchLinks(dragStart?.startId, taskIds[dragToTaskIndex])
-
-		// console.log(
-		// 	`mouse dragActionActive, ${dragActionActive} from indexY ${dragToTaskIndex} to mousepos.x`,
-		// 	dragActionActive
-		// )
-
-		//	const startTaskId = dragStart?.startId
-
-		if (
-			dragStart !== undefined &&
-			mousepos !== undefined &&
-			dragActionActive === dragAction.dragLine
-		) {
-			//define cursor style
-			const endSize =
-				linkAlreadyExists ||
-				dragStart.startId === (taskIds[dragToTaskIndex] ?? -1)
-					? 2
-					: 5
-			// console.log(
-			// 	`endsize ${endSize} startID ${dragStart.startId} endId ${
-			// 		taskIds[dragToTaskIndex] ?? -1
-			// 	} linkAlreadyExists ${linkAlreadyExists}`
-			// )
-
-			// define color for return loops
-			const endColor =
-				!linkAlreadyExists &&
-				dragToTaskIndex >= 0 &&
-				taskIds &&
-				taskIds.indexOf(dragStart.startId) > dragToTaskIndex
-					? 'purple'
-					: 'green'
-			// console.log(`endcolor ${endColor}`)
-
-			return (
-				<>
-					<line
-						className='dragLine'
-						x1={dragStart.x}
-						y1={dragStart.y}
-						x2={mousepos.x}
-						y2={mousepos.y}
-						stroke={linkAlreadyExists === true ? 'red' : endColor}
-						strokeDasharray={linkAlreadyExists == true ? '5,5' : '0,0'}
-						strokeWidth='2'
-					/>
-					<circle
-						// cursor={(linkAlreadyExists===true  && dragStart.startId !== dragToTaskIndex) ? 'not-allowed' : 'crosshair'}
-						className='dragCircle'
-						cx={mousepos.x}
-						cy={mousepos.y}
-						stroke={endColor}
-						fill={endColor}
-						strokeWidth='2'
-						// fill='none'
-						r={endSize}
-					/>
-				</>
-			)
-		} else {
-			return null
-		}
-	}
+	const DrawDragLine = SeqDrawDragLine(
+		dragActionActive,
+		dragStart,
+		yScale,
+		mousepos,
+		matchLinks,
+		taskIds
+	)
 
 	const DrawTopAxis = useMemo(
 		() => (
@@ -819,8 +637,8 @@ export function Seq() {
 				}
 				const taskname: string = taskItem.name || ''
 				// need to get start and end as xscale allows for left offsets and it gets double counted
-				const xStart = xScale(taskItem.start)
-				const xEnd = xScale(taskItem.duration + taskItem.start) || 0
+				const xStart = xScale(taskItem.startTime)
+				const xEnd = xScale(taskItem.duration + taskItem.startTime) || 0
 				const ytop = index * iLayout.barSpacing + iLayout.barPad
 				const barHeight = Math.round(iLayout.barSpacing - 2 * iLayout.barPad)
 				const fillColor = 'pink'
@@ -853,9 +671,13 @@ export function Seq() {
 					// 	dragStartInfo
 					// )
 					if (
-						taskDtl[index]?.tos?.filter(
-							(tolink: Link) => tolink.id === dragStartInfo?.startId
-						).length > 0
+						dragStartInfo?.startId !== undefined &&
+						(taskDtl[index]?.inLinks?.filter(
+							(link: ILinkOut) => link.fromTaskId === dragStartInfo.startId
+						).length > 0 ||
+							taskDtl[index]?.retFroms?.filter(
+								(link: ILinkOut) => link.fromTaskId === dragStartInfo.startId
+							).length > 0)
 					)
 						alert('link already exists')
 				}
@@ -921,7 +743,8 @@ export function Seq() {
 	}
 	//TODO working on delete of items here
 	const handleKeyPressApp = (e: React.KeyboardEvent<HTMLElement>) => {
-		if (e.key === 'Escape') console.log(`Escape`, e.key)
+		if (e.key === 'Escape') console.log(`KeyPress`, e.key)
+		if (e.key !== 'Delete') return
 		if (mOverItem?.type === e_SeqDiagElement.Link) {
 			const delId = mOverItem?.id
 			if (delId !== undefined) {
@@ -930,27 +753,30 @@ export function Seq() {
 			}
 		}
 	}
-
+  
+	
 	const DrawLinks = MakeDrawLinks(
 		taskDtl,
 		iLayout,
 		xScale,
 		yScale,
 		handleMouseEnter,
-		handleMouseLeave
-	) // ,[taskDtl,iLayout,xScale,yScale] )
+		handleMouseLeave,
+		handleKeyPressApp
+	) // ,[	linkUpdateCount() as number,taskUpdateCount,iLayout,xScale,yScale] )
 
 	const DrawInPorts = () => {
 		const map2 = taskDtl.forEach(
-			(task) =>
-				task.tos.map((taskItem, index) => {
-					let targetTask = taskDtl.find((item) => item.id === taskItem.from)
+			(taskD) =>
+				taskD.inLinks.map((taskFromItem, curTaskIndex) => {
+					let targetTask = taskFromItem.fromTaskId //taskDtl.find((item) => item.id === taskItem)
+					const fromTaskName = taskDtl[taskFromItem.fromTaskIndex].name
 					if (targetTask === undefined) return null
 					const selInfo: ISelDiagItem = {
 						type: e_SeqDiagElement.PortIn,
-						id: targetTask.id,
-						sname: `InPort${targetTask?.name} -port ${index}`,
-						desc: `${targetTask?.name} -port ${index}`,
+						id: curTaskIndex,
+						sname: `In Port from ${fromTaskName} -port ${curTaskIndex}`,
+						desc: `from ${fromTaskName} -port ${curTaskIndex}`,
 					}
 
 					const handleMouseEnter = (
@@ -971,11 +797,11 @@ export function Seq() {
 					return (
 						<PortTriangle
 							className='PortIn'
-							x={targetTask.start - iLayout.portTriLength}
+							x={taskD.endTime - iLayout.portTriLength}
 							y={
-								index * iLayout.barSpacing +
+								curTaskIndex * iLayout.barSpacing +
 								1 -
-								iLayout.barPad * iLayout.portLinkVoffset * index
+								iLayout.barPad * iLayout.portLinkVoffset * curTaskIndex
 							}
 							width={iLayout.portTriLength * iLayout.barSpacing}
 							height={(iLayout.portTriLength / 2) * iLayout.barSpacing}
@@ -1074,5 +900,87 @@ export function Seq() {
 			</div>
 		</DragContext.Provider>
 	)
-	
+}
+function SeqDrawDragLine(
+	dragActionActive: dragAction,
+	dragStart:
+		| { x: number; y: number; startId: EntityId; senderType: e_SeqDiagElement }
+		| undefined,
+	yScale: ScaleLinear<number, number, never>,
+	mousepos: XY | undefined,
+	matchLinks: (dragStartTaskId: EntityId, dragEndTaskId: EntityId) => boolean,
+	taskIds: EntityId[]
+) {
+	return () => {
+		//	const [ drawdragStyle, setDrawdragStyle ] = useState<string>('orange')
+		// early exit if dragAction is none
+		if (dragActionActive === dragAction.none) return null
+		//earlyy exit if start task does not exist
+		if (dragStart?.startId === undefined) return null
+
+		const dragToTaskIndex = Math.floor(yScale.invert(mousepos?.y || -1))
+		const linkAlreadyExists =
+			dragToTaskIndex == -1
+				? false
+				: matchLinks(dragStart?.startId, taskIds[dragToTaskIndex])
+
+		// console.log(
+		// 	`mouse dragActionActive, ${dragActionActive} from indexY ${dragToTaskIndex} to mousepos.x`,
+		// 	dragActionActive
+		// )
+		//	const startTaskId = dragStart?.startId
+		if (
+			dragStart !== undefined &&
+			mousepos !== undefined &&
+			dragActionActive === dragAction.dragLine
+		) {
+			//define cursor style
+			const endSize =
+				linkAlreadyExists ||
+				dragStart.startId === (taskIds[dragToTaskIndex] ?? -1)
+					? 2
+					: 5
+			// console.log(
+			// 	`endsize ${endSize} startID ${dragStart.startId} endId ${
+			// 		taskIds[dragToTaskIndex] ?? -1
+			// 	} linkAlreadyExists ${linkAlreadyExists}`
+			// )
+			// define color for return loops
+			const endColor =
+				!linkAlreadyExists &&
+				dragToTaskIndex >= 0 &&
+				taskIds &&
+				taskIds.indexOf(dragStart.startId) > dragToTaskIndex
+					? 'purple'
+					: 'green'
+			// console.log(`endcolor ${endColor}`)
+			return (
+				<>
+					<line
+						className='dragLine'
+						x1={dragStart.x}
+						y1={dragStart.y}
+						x2={mousepos.x}
+						y2={mousepos.y}
+						stroke={linkAlreadyExists === true ? 'red' : endColor}
+						strokeDasharray={linkAlreadyExists == true ? '5,5' : '0,0'}
+						strokeWidth='2'
+					/>
+					<circle
+						// cursor={(linkAlreadyExists===true  && dragStart.startId !== dragToTaskIndex) ? 'not-allowed' : 'crosshair'}
+						className='dragCircle'
+						cx={mousepos.x}
+						cy={mousepos.y}
+						stroke={endColor}
+						fill={endColor}
+						strokeWidth='2'
+						// fill='none'
+						r={endSize}
+					/>
+				</>
+			)
+		} else {
+			return null
+		}
+	}
 }

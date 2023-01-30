@@ -20,7 +20,7 @@ export const initialLayout: ILayout = {
 	graphAxisColor: '#4380cc',
 	barSpacing: 40,
 	portLinkHoffset: 0.25,
-	portLinkVoffset: 0.2,
+	portLinkVoffset: 0.3,
 	cColors: {
 		active: 'green',
 		black: 'black',

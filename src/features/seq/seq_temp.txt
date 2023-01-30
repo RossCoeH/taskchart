@@ -1,0 +1,109 @@
+	taskIds.map((taskid, index) => {
+		const ctask = taskEnts[taskid]
+		// console.log(
+		// 	`preparing taskDtl for index ${index} - taskId ${taskid} `,
+		// 	ctask
+		// )
+		//	console.log(`index ${index} - task`, taskid, ctask)
+		let fromTasks = linksAll.filter(
+			(link) =>
+				link.from === taskid &&
+				taskIds.indexOf(link.from) < taskIds.indexOf(link.to)
+			// from tasks only exist if they start from an earlier index
+		)
+
+		
+
+		const retTasks = linksAll.filter(
+			(link) =>
+				link.to === taskid &&
+				taskIds.indexOf(link.from) > taskIds.indexOf(link.to)
+			// retTasks only exist if they start from an later index
+		)
+
+		const toTasks = linksAll.filter((link) => link.to == taskid)
+
+		//  get start time - only those earlier than current will have defined times so ignore undefined values
+		let startTime = 0
+		toTasks.map((link) => {
+			//const tDtl = 	(taskDtl && tid !==undefined&& taskDtl.hasOwnProperty(tid))? taskDtl[tid] :undefined
+			const itemIndex = taskDtl.findIndex((item) => item.id === link.from)
+			// console.log(`fromTasks.map item`, itemIndex, taskDtl[itemIndex])
+			// const endtime: number = ((taskD[itemIndex]?.start || 0) + (taskD[itemIndex]?.duration || 0) )
+			const endtime: number =
+				itemIndex >= 0
+					? (taskDtl[itemIndex].start || 0) + (taskDtl[itemIndex].duration || 0)
+					: 0
+			// findIndex returns -1 if not found
+			if (endtime && endtime > startTime) startTime = endtime
+		})
+
+		// // create branchLinks
+		// if (toTasks.length === 0) {
+		// 	//  There are no inputs so it is a Root Element
+		// 	branchLinks.({ id: taskid, IsRoot: true, hasValidReturn: false, links: [], froms: [ taskid ], tos: [ taskid ] })
+		// 	branchAdapter.
+		// }
+		// if (toTasks.length === 1) {
+		// 	// Only one input so must be extension of existing branch
+    //  const branchIndex= branchLinks.filter(bl=>(bl.tos && bl.tos.includes(taskid)))
+
+		// }
+
+		taskDtl.push({
+			id: ctask?.id || 0,
+			name: ctask?.name || '',
+			duration: ctask?.duration || 0,
+			index: index,
+			froms: fromTasks,
+			rets: retTasks,
+			tos: toTasks,
+			start: startTime,
+		})
+	})
+
+	// console.log(`taskDtl`, taskDtl)
+	// now need to sort to arrows so the index is based on start time of predecessor link.from
+	// this is used to avoid path line crossing
+	taskDtl.forEach((taskitem, index, taskDtl) => {
+		// now sort froms based on starttimes + duration of predecessor - earliest is last
+		/* 				console.log(
+					`toTasks ${taskitem.id}`)
+					taskitem.tos.map((link,index )=>
+						console.log(
+							`index ${index} Link ${link.id} - start time`,
+							link,
+							getTaskDEndTime(link.from)
+						)
+					) */
+	//	console.log(`taskitem ${index} ${taskitem.name} `, taskitem)
+		
+		taskitem.froms.sort(
+			(aTask, bTask) =>
+				//		(outPort_x(taskDtl[aTask.from],0) - outPort_x(taskDtl[bTask.from],0)) * -1.0
+				taskDtl.findIndex((tt) => tt.id === aTask.to) -
+				taskDtl.findIndex((tt) => tt.id === bTask.to)
+		)
+	//	if (taskitem.index === 4) console.log('Before tos Sorting', taskitem.tos)
+		
+		taskitem.tos.sort(
+			(aTask, bTask) => {
+	
+				if (aTask.from === undefined || bTask.from === undefined) return 0
+				const aTaskDtlfromIndex = taskDtl.findIndex((tt) => tt.id === aTask.from)
+				const bTaskDtlfromIndex = taskDtl.findIndex((tt) => tt.id === bTask.from)
+
+				// if index is -1 then item was nto found - return as no change
+				if (aTaskDtlfromIndex === -1 || bTaskDtlfromIndex === -1) return 0
+
+				//		(outPort_x(taskDtl[aTask.from],0) - outPort_x(taskDtl[bTask.from],0)) * -1.0
+				
+				const timeEndA=	taskDtl[ aTaskDtlfromIndex ].start + taskDtl[ aTaskDtlfromIndex ].duration 
+				const timeEndB = taskDtl[ bTaskDtlfromIndex ].start + taskDtl[ bTaskDtlfromIndex ].duration
+			//	if(taskitem.index===4) console.log('aIndex',aTaskDtlfromIndex, 'bIndex',bTaskDtlfromIndex,  'timeEndA', timeEndA, ' timeEndB', timeEndB)
+				return (timeEndA>timeEndB)? -1.0:1.0
+			})
+		// if(taskitem.index===4) console.log('After tos Sorting', taskitem.tos)
+
+	})
+	//  end of taskDtl

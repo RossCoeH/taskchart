@@ -202,6 +202,7 @@ const defaultColumns: ColumnDef<Task>[] = [
 		footer: (props) => props.column.id,
 		minSize: 5,
 		maxSize: 60,
+	
  size:20,
 		meta: {
 			enableColumnEdit: false,
@@ -435,7 +436,7 @@ function TanTableDnD() {
 				</table>
 				{/* debug for data */}
 				{/* <pre>{JSON.stringify(data, null, 2)}</pre> */}
-				debug for col sizing 
+				{/* debug for col sizing 
 				<pre>
         {JSON.stringify(
           {
@@ -446,7 +447,7 @@ function TanTableDnD() {
           null,
           2
         )}
-      </pre>
+      </pre> */}
 			</div>
 		</DndProvider>
 	)

@@ -1,6 +1,6 @@
-import { EntityId, TaskAbortError } from "@reduxjs/toolkit"
-import { type } from "os"
+import { EntityId } from "@reduxjs/toolkit"
 import { CSSProperties } from "react";
+import stackList from "../../helpers/stacklist";
 
 export type ColorType= CSSProperties["color"]
 
@@ -52,6 +52,17 @@ export interface Link{
   to:number|string,
 }
 
+export interface IBranchLink{
+  id:number|string,
+  froms?:EntityId[],
+	tos?: EntityId[],
+	links:EntityId[],
+	IsRoot: boolean,
+	hasValidReturn:boolean
+	}
+
+
+
 export interface ISelDiagItem{
   type?:string
   sname?:string
@@ -65,17 +76,23 @@ export interface Task{
   duration:number
 }
 
-export type TaskNoId = Omit<Task,"id">
+export type TaskNoId = Omit<Task, "id">
+
+export 	type ILinkOut = {fromTaskId: EntityId, fromTaskIndex: number,id:number|string }
+export	type ILinkIn = {toTaskId: EntityId, toTaskIndex: number ,id:number|string}
+
 
 export interface ITaskDtl{
   id:number| string
   index:number
   name:string
   duration:number
-  froms:Link[]
-	rets:Link[]
-  tos:Link[]
-  start:number
+  inLinks:ILinkOut[]
+	retFroms:ILinkOut[]
+  outLinks:ILinkIn[]
+  startTime:number
+	endTime:number
+	isRoot?:boolean
 	} 
 
 export interface XY {
@@ -86,4 +103,10 @@ export interface XY {
 export interface IArrayOrderMove{
 	fromRowIndex:number,
 	toRowIndex:number
+}
+
+export interface IloopInfo{
+	startIndex: number,
+	endIndex: number,
+	seqStack:number[]
 }

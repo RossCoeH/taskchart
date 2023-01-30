@@ -18,6 +18,7 @@ import TwoColorsInput from './features/Inputs/TwoColorsInput/TwoColorsInput';
 import MyTsGrid from './features/MyTsGrid';
 import MyTable from './features/Tables/MyTable';
 import GrommetTable from './features/Tables/GrommetTable';
+
 // import ReactTabTable from './features/Tables/ReactTabTable.xsx'
 
 /**
@@ -65,7 +66,7 @@ function App() {
          onChange ={(e)=>console.log(`( input change.target.value)`, e)}  
          />
          <div className='TableGraphContainer'>
-         <TanTableDnD />
+         <TanTableDnD  />
         <Seq/>
          </div>
     </div>

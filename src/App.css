@@ -25,9 +25,9 @@
 .App-link {
   color: rgb(112, 76, 182);
 }
-/* .TableGraphContainer{
+.TableGraphContainer{
  display: flex;
-} */
+}
 
 @keyframes App-logo-float {
   0% {
