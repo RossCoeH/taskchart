@@ -1,4 +1,10 @@
-import React, { FC, InputHTMLAttributes, useEffect, useRef, useState } from 'react'
+import React, {
+	FC,
+	InputHTMLAttributes,
+	useEffect,
+	useRef,
+	useState,
+} from 'react'
 import ReactDOM from 'react-dom'
 import './TanTableDnD.css'
 
@@ -20,7 +26,7 @@ import {
 
 import { DndProvider, useDrag, useDrop } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
-import { Task } from '../seq/seqTypes'
+import { ILayout, ITaskDtl, Task } from '../seq/seqTypes'
 import { useAppDispatch, useAppSelector } from '../../app/hooks/hooks'
 import { selTasks, tasksReorder, tasksUpdateOne } from '../seq/seqSlice'
 import { relative } from 'path'
@@ -28,6 +34,7 @@ import { EntityId, getType } from '@reduxjs/toolkit'
 import { tasksUpsertOne } from '../seq/seqSlice'
 import { JsxElement, TypeOfExpression } from 'typescript'
 import { assert } from 'console'
+import { scaleLinear } from '@visx/visx'
 
 // add an interface for row update editing
 declare module '@tanstack/react-table' {
@@ -69,60 +76,72 @@ const defaultColumn: Partial<ColumnDef<Task>> = {
 			setIsEditing(false)
 		}
 		interface ICustomInputWidth {
-			
 			value: number | string
 			onChange?: Function
 			onBlur?: Function
 		}
 		// add special handling for input so we can control width
 		// from JS @ https://jsfiddle.net/cabralpinto/h32wob50/1/
-			const CustomInputWidth=(props:React.DOMAttributes<HTMLInputElement>& React.DetailedHTMLProps<React.InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>) => {
-				const [content, setContent] = useState<string | number|readonly string[]>('')
-				const [width, setWidth] = useState(40)
-				const span = useRef<HTMLSpanElement>(null)
-						const inputRef = useRef<HTMLInputElement>(null)
-				const {value,onChange,onBlur ,...rest}=props
-		useEffect(() => {
-			  
-					//if((typeof value )==='number'|| (typeof value === 'string'))
-					 if(value !== undefined){
+		const CustomInputWidth = (
+			props: React.DOMAttributes<HTMLInputElement> &
+				React.DetailedHTMLProps<
+					React.InputHTMLAttributes<HTMLInputElement>,
+					HTMLInputElement
+				>
+		) => {
+			const [content, setContent] = useState<
+				string | number | readonly string[]
+			>('')
+			const [width, setWidth] = useState(40)
+			const span = useRef<HTMLSpanElement>(null)
+			const inputRef = useRef<HTMLInputElement>(null)
+			const { value, onChange, onBlur, ...rest } = props
+			useEffect(() => {
+				//if((typeof value )==='number'|| (typeof value === 'string'))
+				if (value !== undefined) {
 					value && setContent(value)
-					console.log ('input value ',value)
+					console.log('input value ', value)
 				}
 			}, [value])
 
-				useEffect(() => {
-					console.log("useEffect content",content,' OffsetWidth ',span?.current?.offsetWidth)
-				if(span.current !== null ) setWidth(Math.max(20,span?.current?.offsetWidth+35)) //35 used to allow for spin arrows
-				else setWidth(35)
-				}, [content])
-
-				const changeHandler: React.ChangeEventHandler<HTMLInputElement> = (
-					evt
-				) => {
-					setContent(evt.target.value)
-				}
-
-				return (
-					<div is='custom' 
-					className='custom_input'>
-						<span id='hide' ref={span} style={{visibility:'hidden'}}>
-							{content}
-						</span>
-						<input
-						 className='custom_input'
-               value={content}
-              ref={inputRef}
-							style={{ width  }}
-					   	autoFocus={true}
-							onChange={changeHandler}
-							onBlur={onBlur}
-
-							type={typeof props.value}
-						/>
-					</div>
+			useEffect(() => {
+				console.log(
+					'useEffect content',
+					content,
+					' OffsetWidth ',
+					span?.current?.offsetWidth
 				)
+				if (span.current !== null)
+					setWidth(
+						Math.max(20, span?.current?.offsetWidth + 35)
+					) //35 used to allow for spin arrows
+				else setWidth(35)
+			}, [content])
+
+			const changeHandler: React.ChangeEventHandler<HTMLInputElement> = (
+				evt
+			) => {
+				setContent(evt.target.value)
 			}
+
+			return (
+				<div is='custom' className='custom_input'>
+					<span id='hide' ref={span} style={{ visibility: 'hidden' }}>
+						{content}
+					</span>
+					<input
+						className='custom_input'
+						value={content}
+						ref={inputRef}
+						style={{ width }}
+						autoFocus={true}
+						onChange={changeHandler}
+						onBlur={onBlur}
+						type={typeof props.value}
+					/>
+				</div>
+			)
+		}
 
 		const handleStartEdit = (e: React.MouseEvent<HTMLElement>): void => {
 			const typeInput = typeof initialValue
@@ -160,12 +179,12 @@ const defaultColumn: Partial<ColumnDef<Task>> = {
 			return (
 				<CustomInputWidth
 					value={value}
-				//	onChange={handleEditValue}
+					//	onChange={handleEditValue}
 					onBlur={onBlur}
-				autoFocus={true}
-				//	type={typeof value}
+					autoFocus={true}
+					//	type={typeof value}
 				/>
-				
+
 				// <input
 				// 	value={value}
 				// 	onChange={handleEditValue}
@@ -202,8 +221,7 @@ const defaultColumns: ColumnDef<Task>[] = [
 		footer: (props) => props.column.id,
 		minSize: 5,
 		maxSize: 60,
-	
- size:20,
+		size: 20,
 		meta: {
 			enableColumnEdit: false,
 		},
@@ -214,10 +232,9 @@ const defaultColumns: ColumnDef<Task>[] = [
 		header: () => <span>Name</span>,
 		footer: (props) => props.column.id,
 		enableResizing: true,
-		
 		minSize: 5,
 		maxSize: 250,
-   size:100,
+		size: 100,
 		meta: {
 			enableColumnEdit: true,
 		},
@@ -228,14 +245,41 @@ const defaultColumns: ColumnDef<Task>[] = [
 		//cell: (info) => info.getValue(),
 		header: () => <span>Duration</span>,
 		footer: (props) => props.column.id,
-	  enableResizing: true,
+		enableResizing: true,
 		minSize: 5,
 		maxSize: 60,
- //size:80,
+		//size:80,
 		meta: {
 			enableColumnEdit: true,
 		},
 	},
+		{
+		accessorKey: 'cycleTime',
+		cell: (info) => info.getValue()??'-',
+		header: () => <span>Cycle Time</span>,
+		footer: (props) => props.column.id,
+		enableResizing: true,
+		minSize: 5,
+		maxSize: 250,
+		size: 100,
+		meta: {
+			enableColumnEdit: false,
+		},
+	},
+		{
+		accessorKey: 'floatTime',
+		cell: (info) => info.getValue()??'-',
+		header: () => <span>Float</span>,
+		footer: (props) => props.column.id,
+		enableResizing: true,
+		minSize: 5,
+		maxSize: 250,
+		size: 100,
+		meta: {
+			enableColumnEdit: false,
+		},
+	},
+	
 ]
 
 const DraggableRow: FC<{
@@ -272,8 +316,17 @@ const DraggableRow: FC<{
 	)
 }
 
-function TanTableDnD() {
-	const data = useAppSelector(selTasks.selectAll)
+export interface ITanTableDND{
+	data:ITaskDtl[]
+}
+export interface IgraphInfo{
+	xScale:Function
+		yScale:Function,
+		iLayout:ILayout,
+}
+
+const TanTableDnD:React.FC<ITanTableDND & IgraphInfo> = ({data}) =>{
+	//const data = useAppSelector(selTasks.selectAll)
 	const dispatch = useAppDispatch()
 
 	const [columns] = React.useState<typeof defaultColumns>(() => [

@@ -80,7 +80,7 @@ export type TaskNoId = Omit<Task, "id">
 
 export 	type ILinkOut = {fromTaskId: EntityId, fromTaskIndex: number,id:number|string }
 export	type ILinkIn = {toTaskId: EntityId, toTaskIndex: number ,id:number|string}
-
+export 	type ILinkFrom = {fromTaskId: EntityId, fromTaskIndex: number,id:number|string,seqLoops:number[][],loopDuration:number|undefined }
 
 export interface ITaskDtl{
   id:number| string
@@ -88,11 +88,13 @@ export interface ITaskDtl{
   name:string
   duration:number
   inLinks:ILinkOut[]
-	retFroms:ILinkOut[]
+	retFroms:ILinkFrom[]
   outLinks:ILinkIn[]
   startTime:number
 	endTime:number
 	isRoot?:boolean
+	cycleTime:number|undefined
+	floatTime:number|undefined
 	} 
 
 export interface XY {
@@ -108,5 +110,6 @@ export interface IArrayOrderMove{
 export interface IloopInfo{
 	startIndex: number,
 	endIndex: number,
-	seqStack:number[]
+	seqStack:number[],
+	cycleLoopTime:number|undefined,
 }

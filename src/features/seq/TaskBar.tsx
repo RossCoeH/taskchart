@@ -40,13 +40,13 @@ interface ITaskBar {
 	onMouseDown?: React.MouseEventHandler<SVGRectElement>
 	onMouseUp?: React.MouseEventHandler<SVGRectElement> //& (ISelItem|undefined)
 	onMouseMove?: any // React.MouseEventHandler<SVGRectElement>& (ISelItem|undefined)
-	onMouseEnter?: React.MouseEventHandler<SVGRectElement>
-	onMouseLeave?: React.MouseEventHandler<SVGRectElement>
+	// onMouseEnter?: React.MouseEventHandler<SVGRectElement>
+	// onMouseLeave?: React.MouseEventHandler<SVGRectElement>
 	iLayout: ILayout
 	extraClasses:string
 }
 
-const TaskBar = (props: ITaskBar) => {
+const TaskBar = (props:any) => {
 	const {
 		taskDtl,
 		ytop,
@@ -55,16 +55,16 @@ const TaskBar = (props: ITaskBar) => {
 		xEnd,
 		xStart,
 		fill,
-		onMouseDown,
+	//	onMouseDown,
 		onMouseUp,
-		onMouseMove,
+	onMouseMove,
 		iLayout,
 		extraClasses
 	} = props
 
 	const dispatch = useAppDispatch()
-	const appMouseOverItem = useAppSelector(mouseOverItem)
-	const appMouseDownInItem = useAppSelector(mouseDownInItem)
+	//const appMouseOverItem = useAppSelector(mouseOverItem)
+	//const appMouseDownInItem = useAppSelector(mouseDownInItem)
 	const appSelectedItem = useAppSelector(selectedItems)
 
 	var classNames = require('classnames/bind')
@@ -82,6 +82,7 @@ const TaskBar = (props: ITaskBar) => {
 		e: React.MouseEvent<SVGRectElement, MouseEvent>
 	) => {	
 	//	console.log('entered Task - index:', index,selInfo,extraClasses)
+	e.persist()
 		dispatch(setMouseOverItem(selInfo))
 
 	}
@@ -90,35 +91,38 @@ const TaskBar = (props: ITaskBar) => {
 		dispatch(resetMouseOverItem(selInfo))
 	}
 	const handleMouseDown = (e: React.MouseEvent<SVGRectElement, MouseEvent>) => {
+		
 		e && onMouseDown && onMouseDown(e)
-	//	console.log('MouseDown Task - index:', index, selInfo)
-		dispatch(setMouseDownInItem(selInfo))
+
+		{console.log('MouseDown Task - index:', index, selInfo)
+		e.persist()
+		dispatch(setMouseDownInItem(selInfo))}
 	}
 	const handleMouseUp = (e: React.MouseEvent<SVGRectElement, MouseEvent>) => {
 //		console.log('MouseUp Task - index:', index, selInfo)
 
-		if (appMouseDownInItem?.sname === selInfo.sname) {
+	/* 	if (appMouseDownInItem?.sname === selInfo.sname) {
 			console.log(`Mouse Down& Up in same element`,selInfo.sname, selInfo)
 			selInfo && onMouseUp && dispatch(setSelectedItem(selInfo))
 		} else {
 			onMouseUp && onMouseUp(e)
-		}
+		} */
 		//	dispatch(resetMouseOverItem(selInfo))
 	}
 
 	const handleMouseMove = (e: React.MouseEvent<SVGRectElement, MouseEvent>) => {
-		// console.log('MouseMove Task - index:', index, selInfo)
+		console.log('MouseMove Task - index:', index, selInfo)
 		onMouseMove && onMouseMove(e, selInfo)
 	}
 
-	let classname =
-		appMouseOverItem?.sname === selInfo.sname ? styles.ishover : styles.taskbar
-	if (
+	let classname =styles.taskbar
+	//	appMouseOverItem?.sname === selInfo.sname //? styles.ishover : styles.taskbar
+	/* if (
 		appSelectedItem &&
 		appSelectedItem?.filter((item) => item?.sname === selInfo.sname).length > 0
 	)
 		classname = classname + ' ' + styles.isselected +extraClasses??""
-	//	console.log("MouseMove taskBar", selInfo.sname)
+	//	console.log("MouseMove taskBar", selInfo.sname) */
 	return (
 		<>
 			<rect
@@ -129,17 +133,17 @@ const TaskBar = (props: ITaskBar) => {
 				y={ytop}
 				width={xEnd - xStart}
 				height={barHeight}
-		
+		// pointerEvents=''
 				//fill={fill || 'lightblue'}
 
 				// handleDragStart:{handleSvgTaskMouseDown}
 				// handleSvgTaskMouseDown:{handleSvgTaskMouseDown}
 				// onMouseDown:{handleSvgMouseDown}
-				onMouseDown={handleMouseDown}
+				 onMouseDown={handleMouseDown}
 				onMouseUp={handleMouseUp}
-				onMouseMove={handleMouseMove}
-				onMouseEnter={handleMouseEnter}
-				onMouseLeave={handleMouseLeave}
+		  onMouseMove={handleMouseMove}
+				// onMouseEnter={handleMouseEnter}
+				// onMouseLeave={handleMouseLeave}
 
 				// 					onMouseDown:{props.handleDragStart}
 				// onMouseMove:{props.handleDragMove}

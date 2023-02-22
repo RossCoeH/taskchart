@@ -66,7 +66,7 @@ function App() {
          onChange ={(e)=>console.log(`( input change.target.value)`, e)}  
          />
          <div className='TableGraphContainer'>
-         <TanTableDnD  />
+        
         <Seq/>
          </div>
     </div>

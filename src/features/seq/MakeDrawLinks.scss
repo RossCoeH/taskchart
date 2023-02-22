@@ -7,7 +7,14 @@
 	color: $first-color;
 	stroke-width: 2px;
 	stroke: $first-color;
-  pointer-events: stroke;
+  pointer-events: visible;
+}
+.link:hover{
+	cursor: crosshair;
+	.linkIsHover {
+	stroke: $hover-color;
+	stroke-width: 4px;
+}
 }
 
 .linkStart{

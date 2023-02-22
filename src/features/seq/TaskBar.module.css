@@ -1,15 +1,16 @@
 .taskbar{
   fill:pink;
   stroke-width:0px;
-
 }
- .ishover{
+ .taskbar:hover{
   fill:mediumorchid;
   stroke-width: 4px;
   stroke:  rgb(0, 47, 255) ;
 
 }
-.isselected{
+
+
+taskbar .isselected{
   border: 2px gold solid;
    stroke-width: 4px;
   stroke:  rgb(19, 128, 42)

@@ -5,7 +5,7 @@ export const initialLayout: ILayout = {
 	barPad: 7,
 	PortDotSize: 0.1,
 	portTriLength: 0.4, // ratio of barspacing
-	portTriHeight: 0.2, // ratio of barspacing
+	portTriHeight: 0.18, // ratio of barspacing
 	numPortIn: 4,
 	numPortOut: 4,
 	numPortReturn: 3,

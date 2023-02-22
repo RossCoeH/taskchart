@@ -1,15 +1,11 @@
-import React, {
-	useMemo,
-	useRef,
-	useState,
-} from 'react'
+import React, { MouseEventHandler, useMemo, useRef, useState } from 'react'
 import * as _ from 'lodash'
 
 import { Group } from '@visx/group'
 // import { curveBasis } from '@visx/visx'
 // import { LinePath } from '@visx/visx'
 // import { XYChart } from '@visx/visx'
-import { scaleLinear} from '@visx/visx'
+import { scaleLinear } from '@visx/visx'
 import { AxisTop, AxisBottom } from '@visx/visx' ///axis'
 import { GridRows, GridColumns } from '@visx/visx'
 //import react-spring from '@visx/react-spring'
@@ -19,7 +15,6 @@ import { useViewport } from 'react-viewport-hooks'
 import { useAppSelector, useAppDispatch } from '../../app/hooks/hooks'
 import { initialLayout } from './initValues'
 import {
-
 	selTasks,
 	selLinks,
 	EntArrayToAdapter,
@@ -47,12 +42,12 @@ import {
 	Task,
 	XY,
 	ITaskDtl,
-	ILayout,
 	e_SeqDiagElement,
 	ISelDiagItem,
 	IBranchLink,
 	ILinkIn,
 	ILinkOut,
+	ILayout,
 } from './seqTypes'
 import styles from './Seq.module.scss'
 import { useSelector } from 'react-redux'
@@ -73,8 +68,9 @@ import MakeDrawLinks from './MakeDrawLinks'
 import { useClickOutside, useKeyboardEvent, useToggle } from '@react-hookz/web'
 import TaskList from './TaskList'
 import { assert, debug } from 'console'
-import { ScaleLinear } from 'd3-scale'
 import taskGetDtl from './TaskGetDtl'
+import TanTableDnD from '../Tables/TanTable_DnD'
+import { SeqDrawDragLine } from './SeqDrawDragLine'
 //import MyTable from '../Tables/MyTable'
 
 interface IStartMouseDrag {
@@ -108,13 +104,12 @@ const toNum2 = (num: number | undefined | typeof NaN) => {
 	return num !== undefined && !isNaN(num) ? num.toFixed(2) : ' '
 }
 
-enum dragAction {
+export enum dragAction {
 	none = 'none',
 	dragLine = 'dragLine',
 	canCreateLink = 'canCreateLink',
 	pan = 'pan',
 }
-
 
 export function Seq() {
 	const dispatch = useAppDispatch()
@@ -150,7 +145,7 @@ export function Seq() {
 	const [connectors, setconnectors] = useState([initialConnector])
 	const taskIds = useAppSelector((state) => state.seq.tasks.ids)
 	const taskEnts = useAppSelector((state) => state.seq.tasks.entities) || {}
-	const taskList = useAppSelector(selectTasksAll) || {};
+	const taskList = useAppSelector(selectTasksAll) || {}
 	const linkList = useAppSelector(selectLinksAll) || {}
 	const linkIds = useAppSelector((state) => state.seq.links.ids)
 	const linkEnts = useAppSelector((state) => state.seq.links.entities)
@@ -198,13 +193,12 @@ export function Seq() {
 	}
 
 	//let taskDtl: ITaskDtl[] = []
-	const taskDtl =  taskGetDtl(taskList, linkList)
+	const taskDtl = taskGetDtl(taskList, linkList)
+	console.log('exported taskDtl' ,taskDtl)
 	//,[linkUpdateCount,taskUpdateCount])
 
 	// bounds
-	const maxEndTime = Math.max(
-		...taskDtl.map((task) => task.endTime)
-	)
+	const maxEndTime = Math.max(...taskDtl.map((task) => task.endTime))
 	// console.log(
 	// 	'max EndTime is',
 	// 	maxEndTime,
@@ -220,17 +214,17 @@ export function Seq() {
 	// const yMax = vh - margin.top - margin.bottom
 
 	// scales
+ 
 	const xScale = useMemo(
-		() =>
-			scaleLinear<number>({
-				domain: [Math.min(0), 100, maxEndTime],
-				range: [
-					iLayout.graphX0,
-					iLayout.graphWidth + iLayout.graphX0 - iLayout.graphPadRight,
-				],
-			}),
-		[iLayout.graphX0, iLayout.graphWidth + iLayout.graphPadRight, maxEndTime]
-	)
+		() => scaleLinear<number>({
+			domain: [ Math.min(0), 100, maxEndTime ],
+			range: [
+				iLayout.graphX0,
+				iLayout.graphWidth + iLayout.graphX0 - iLayout.graphPadRight,
+			],
+		}),
+		[ iLayout.graphX0, iLayout.graphWidth + iLayout.graphPadRight, maxEndTime ]
+	);
 
 	const yScale = scaleLinear<number>({
 		domain: [0, taskIds.length + 1],
@@ -277,15 +271,14 @@ export function Seq() {
 		x?: number,
 		y?: number
 	) => {
-		
 		// const { onDragStart, resetOnStart } = props
 		if (e !== undefined) {
-			e.stopPropagation()
+		//	e.stopPropagation()
 			e.persist()
 		}
 		if (dragActionActive === dragAction.none) {
 			//only run if not already dragging as you can move over multiple elements
-     
+
 			// console.log(
 			// 	`MouseDown dragStart from type ${senderType.toString()} -Entity: ${senderId}`
 			// )
@@ -293,7 +286,8 @@ export function Seq() {
 			let point = { x, y }
 			//check to see if x & y is given
 			if (
-				(x === undefined || y === undefined) ||
+				x === undefined ||
+				y === undefined ||
 				graphAreaRef.current === undefined
 			) {
 				if (graphAreaRef !== null) {
@@ -333,8 +327,13 @@ export function Seq() {
 						}
 					}
 				} else {
-					if (typeof x === 'number' && typeof y === 'number' && x !== undefined && y !== undefined) {
-						if (y ===undefined)return
+					if (
+						typeof x === 'number' &&
+						typeof y === 'number' &&
+						x !== undefined &&
+						y !== undefined
+					) {
+						if (y === undefined) return
 						const yint = Math.trunc(yScale.invert(y as number))
 						const startTask = taskEnts[taskIds[yint]]
 						alert('broken code in setting numbers for dragging')
@@ -384,7 +383,7 @@ export function Seq() {
 			// check if link avail
 			const endIndex = Math.floor(yScale.invert(mousepos?.y || 0))
 			const startIndex = Math.floor(yScale.invert(dragStart?.y || 0))
-			let isLinkPossible = false  // assume not possible
+			let isLinkPossible = false // assume not possible
 
 			const startTask = taskDtl[startIndex]
 			const endTask = taskDtl[endIndex]
@@ -452,9 +451,9 @@ export function Seq() {
 		id: EntityId,
 		index: number
 	) => {
-		e.stopPropagation()
+		// e.stopPropagation()
 		e.persist()
-
+ console.log ('MouseMove Seq dragActionActive =', dragActionActive)
 		if (dragActionActive !== dragAction.none) {
 			//	console.log('mouse Move - isDragging', dragActionActive)
 			//use gPoint to get consistent ref point and avoid typo
@@ -510,12 +509,12 @@ export function Seq() {
 							],
 						}
 					}
-					// console.log(
-					// 	`mousemove dragto, selInfo`,
-					// 	mousepos.x,
-					// 	mousepos.y,
-					// 	e.target
-					// )
+					console.log(
+						`mousemove dragto, selInfo`,
+						mousepos.x,
+						mousepos.y,
+						e.target
+					)
 					// const newConnectors = connectors.concat(newPath)
 
 					// setconnectors(newConnectors)
@@ -623,7 +622,8 @@ export function Seq() {
 
 	// console.log(`taskIds, taskEnts`, taskIds, taskEnts)
 
-	const TaskBars = () => {
+	const TaskBars = 
+	() => {
 		const output =
 			//useMemo(			() =>
 			taskDtl.map((taskItem, index) => {
@@ -697,9 +697,9 @@ export function Seq() {
 						onMouseDown={(e: React.MouseEvent) =>
 							handleLocalMouseDown(e, index, taskItem.id)
 						}
-						onMouseEnter={(e: React.MouseEvent) =>
-							handleLocalMouseEnter(e, index, taskItem.id)
-						}
+						// onMouseEnter={(e: React.MouseEvent) =>
+						// 	handleLocalMouseEnter(e, index, taskItem.id)
+						// }
 						onMouseMove={(e: React.MouseEvent) =>
 							handleSvgMouseMove(
 								e,
@@ -753,8 +753,7 @@ export function Seq() {
 			}
 		}
 	}
-  
-	
+
 	const DrawLinks = MakeDrawLinks(
 		taskDtl,
 		iLayout,
@@ -825,6 +824,7 @@ export function Seq() {
 	// -- render output starts
 	return (
 		<DragContext.Provider value={DragContextItem}>
+	<	 TanTableDnD data={taskDtl} xScale={xScale} yScale={yScale} iLayout={iLayout}/>
 			<div className='seq graphContainer' onKeyUp={handleKeyPressApp}>
 				<svg
 					width={
@@ -845,6 +845,7 @@ export function Seq() {
 					height={graphHeight + iLayout.graphPadTop + iLayout.graphPadBottom}
 				>
 					<rect
+					key='graphZoneBackground'
 						x={0}
 						y={0}
 						width={iLayout.graphWidth}
@@ -858,13 +859,14 @@ export function Seq() {
 							handleSvgMouseUp(e, e_SeqDiagElement.SeqChart, -1, -1)
 						}
 						onMouseMove={(e: React.MouseEvent) =>
-							handleSvgMouseMove(e, e_SeqDiagElement.SeqChart, -1, -1)
+						{console.log('rect move listener active ', e)
+							handleSvgMouseMove(e, e_SeqDiagElement.SeqChart, -1, -1)}
 						}
 					/>
 					{/* <DrawRectGrid /> */}
 					{/* <MyTable/> */}
-					<TaskBars />
-					{/* <DrawInPorts /> */}
+					<TaskBars 				/>
+					<DrawInPorts />
 					{/* 
 					<DrawOutPorts/> */}
 					{DrawLinks}
@@ -901,86 +903,4 @@ export function Seq() {
 		</DragContext.Provider>
 	)
 }
-function SeqDrawDragLine(
-	dragActionActive: dragAction,
-	dragStart:
-		| { x: number; y: number; startId: EntityId; senderType: e_SeqDiagElement }
-		| undefined,
-	yScale: ScaleLinear<number, number, never>,
-	mousepos: XY | undefined,
-	matchLinks: (dragStartTaskId: EntityId, dragEndTaskId: EntityId) => boolean,
-	taskIds: EntityId[]
-) {
-	return () => {
-		//	const [ drawdragStyle, setDrawdragStyle ] = useState<string>('orange')
-		// early exit if dragAction is none
-		if (dragActionActive === dragAction.none) return null
-		//earlyy exit if start task does not exist
-		if (dragStart?.startId === undefined) return null
 
-		const dragToTaskIndex = Math.floor(yScale.invert(mousepos?.y || -1))
-		const linkAlreadyExists =
-			dragToTaskIndex == -1
-				? false
-				: matchLinks(dragStart?.startId, taskIds[dragToTaskIndex])
-
-		// console.log(
-		// 	`mouse dragActionActive, ${dragActionActive} from indexY ${dragToTaskIndex} to mousepos.x`,
-		// 	dragActionActive
-		// )
-		//	const startTaskId = dragStart?.startId
-		if (
-			dragStart !== undefined &&
-			mousepos !== undefined &&
-			dragActionActive === dragAction.dragLine
-		) {
-			//define cursor style
-			const endSize =
-				linkAlreadyExists ||
-				dragStart.startId === (taskIds[dragToTaskIndex] ?? -1)
-					? 2
-					: 5
-			// console.log(
-			// 	`endsize ${endSize} startID ${dragStart.startId} endId ${
-			// 		taskIds[dragToTaskIndex] ?? -1
-			// 	} linkAlreadyExists ${linkAlreadyExists}`
-			// )
-			// define color for return loops
-			const endColor =
-				!linkAlreadyExists &&
-				dragToTaskIndex >= 0 &&
-				taskIds &&
-				taskIds.indexOf(dragStart.startId) > dragToTaskIndex
-					? 'purple'
-					: 'green'
-			// console.log(`endcolor ${endColor}`)
-			return (
-				<>
-					<line
-						className='dragLine'
-						x1={dragStart.x}
-						y1={dragStart.y}
-						x2={mousepos.x}
-						y2={mousepos.y}
-						stroke={linkAlreadyExists === true ? 'red' : endColor}
-						strokeDasharray={linkAlreadyExists == true ? '5,5' : '0,0'}
-						strokeWidth='2'
-					/>
-					<circle
-						// cursor={(linkAlreadyExists===true  && dragStart.startId !== dragToTaskIndex) ? 'not-allowed' : 'crosshair'}
-						className='dragCircle'
-						cx={mousepos.x}
-						cy={mousepos.y}
-						stroke={endColor}
-						fill={endColor}
-						strokeWidth='2'
-						// fill='none'
-						r={endSize}
-					/>
-				</>
-			)
-		} else {
-			return null
-		}
-	}
-}
