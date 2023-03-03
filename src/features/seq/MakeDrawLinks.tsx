@@ -23,13 +23,13 @@ const MakeDrawLinks = (
 	xScale: any,
 	yScale: any,
 	// taskEnts: Dictionary<Task>,
-	 handleMouseEnter: (selInfo: ISelDiagItem) => void,
+	handleMouseEnter: (selInfo: ISelDiagItem) => void,
 	handleMouseLeave: (selInfo: ISelDiagItem) => void,
 	handleKeyPressApp: (e: React.KeyboardEvent<HTMLElement>) => void
 	//	outPort_x:(taskItem: ITaskDtl, taskIndex: number) =>number,
 ) => {
-	const triHeight = iLayout.portTriHeight * iLayout.barSpacing
-	const triLength = iLayout.portTriLength * iLayout.barSpacing
+	const triHeight = iLayout.portTriHeight 
+	const triLength = iLayout.portTriLength 
 	const selectedList = useAppSelector(selectedItems)
 
 	const dispatch = useAppDispatch()
@@ -43,6 +43,7 @@ const MakeDrawLinks = (
 		return output
 	}
 
+  
 	const outPort_y = (index: number) =>
 		(index + 1) * iLayout.barSpacing - iLayout.barPad // fetch lower edge of taskbar
 
@@ -53,14 +54,15 @@ const MakeDrawLinks = (
 		iLayout.barPad +
 		iLayout.portLinkVoffset * index
 
+
 	const inPort_y = (
 		taskItem: ITaskDtl,
 		indexTaskTo: number,
 		indexPortTo: number
 	) =>
 		indexTaskTo * iLayout.barSpacing +
-		iLayout.barPad +
-		iLayout.portLinkVoffset * (indexPortTo + 1) * iLayout.barSpacing
+		iLayout.barPad /2+
+		iLayout.portLinkVoffset * (indexPortTo + 1) 
 
 	const inPort_x = (taskItem: ITaskDtl) => taskItem.startTime // end of task
 	let output: ReactNode[] = []
@@ -122,7 +124,7 @@ const MakeDrawLinks = (
 				path.push({ x: xScale(ppt0.x) + xPortOffset, y: ppt0.y })
 				const midX = Math.min(
 					xScale(ppt0.x) + xPortOffset,
-					xScale(pptEnd.x) - triLength * 1.5 //trilength offset to ensure space for end arrow
+					xScale(pptEnd.x) - triLength * 1.5//trilength offset to ensure space for end arrow
 				)
 				path.push({
 					x: midX,
@@ -134,7 +136,7 @@ const MakeDrawLinks = (
 				}) // first dropper
 
 				path.push({
-					x: xScale(pptEnd.x) - iLayout.portTriLength * 1.5,
+					x: xScale(pptEnd.x) - iLayout.portTriLength * 1,
 					y: pptEnd.y,
 				}) // end less triangle
 
@@ -214,7 +216,7 @@ const MakeDrawLinks = (
 						)
 					}
 
-					outputPortCircles.push(
+					output.push(
 						<circle
 							className={classnameS}
 							key={selInfoS.sname}
@@ -224,7 +226,7 @@ const MakeDrawLinks = (
 							// fill={color}
 							// stroke='1px'
 							// onMouseEnter={(e) => handleMouseEnter(selInfoS)}
-						// 	onMouseLeave={(e) => handleMouseLeave(selInfoS)}
+							// 	onMouseLeave={(e) => handleMouseLeave(selInfoS)}
 							onMouseUp={(e) => onMouseUp && onMouseUp(selInfoS)}
 							onClick={(e) => alert(`Click on ${selInfoS.sname}`)}
 						/>
@@ -242,8 +244,8 @@ const MakeDrawLinks = (
 							fill='transparent'
 							// strokeWidth='2'
 							radius='4'
-						//	onMouseEnter={(e) => handleMouseEnter(selInfoL)}
-						//	onMouseLeave={(e) => handleMouseLeave(selInfoL)}
+							//	onMouseEnter={(e) => handleMouseEnter(selInfoL)}
+							//	onMouseLeave={(e) => handleMouseLeave(selInfoL)}
 							onMouseUp={(e) => onMouseUp && onMouseUp(selInfoL)}
 							// onClick={e => 	alert(`Click on ${selInfoL.sname}`);
 						/>
@@ -258,8 +260,7 @@ const MakeDrawLinks = (
 							// onMouseEnter={(e) => handleMouseEnter(selInfoE)}
 							// onMouseLeave={(e) => handleMouseLeave(selInfoE)}
 							onMouseUp={(e) => onMouseUp && onMouseUp(selInfoE)}
-							pointerEvents= 'visible'
-							
+							pointerEvents='visible'
 						/>
 					)
 				}
@@ -267,14 +268,13 @@ const MakeDrawLinks = (
 		)
 
 		// now do return links or loops
-
-		const retMap = taskD.retFroms.map(
-			(retLink, indexPortRetOffset, retarray) => {
+		const retMap = taskD.retTos.map(
+			(retLink, indexRetOut, retarray) => {
 				// find to Task and matchind index
-				const indexTaskToItem = indexTaskD
-				const indexTaskFromItem = retLink.fromTaskIndex
+				const indexTaskToItem = retLink.toTaskIndex
+				const indexTaskFromItem = indexTaskD
 				const taskFromEndtime = taskDtl[indexTaskFromItem].endTime
-				const taskToEndtime = taskD.endTime
+				const taskToEndtime = taskDtl[indexTaskToItem].endTime
 				// if (taskToItem === undefined) {
 				// 	console.log(`Undefined taskToitem at index ${indexPortIdFrom}`)
 				// 	return null
@@ -283,47 +283,54 @@ const MakeDrawLinks = (
 				// 	console.log(`Undefined taskFromItem at link id ${retLink.id}`)
 				// 	return null
 				// }
-				const indexPortOffsetTo = taskDtl[indexTaskToItem].outLinks.findIndex(
-					(item) => retLink.id === item.id
+				const indexPortRetOffsetTo = taskDtl[indexTaskToItem].retPorts.findIndex(
+					item => retLink.id === item.id
 				)
 
+					// }
+				const indexPortRetOffsetFrom = taskDtl[indexTaskFromItem].retPorts.findIndex(
+					item => retLink.id === item.id)
+
+				if (indexPortRetOffsetFrom < 0) {
+					alert('indexPortRetOffsetFrom ws not found')
+				}
 				const ppt0 = {
 					x: taskFromEndtime,
 					y:
-						indexTaskFromItem * iLayout.barSpacing -
-						iLayout.barPad -
-						indexPortRetOffset * iLayout.portLinkVoffset,
+					(	indexTaskFromItem * iLayout.barSpacing) +
+						iLayout.barPad +
+						indexPortRetOffsetFrom * iLayout.portLinkVoffset,
 				}
 				const pptEnd = {
 					x: taskToEndtime,
 					y:
-						indexTaskD * iLayout.barSpacing +
-							iLayout.barPad +
-							indexPortOffsetTo * iLayout.portLinkVoffset || 0,
+						indexTaskToItem* iLayout.barSpacing +
+						iLayout.barPad +
+						indexPortRetOffsetTo * iLayout.portLinkVoffset ,
 				}
-				// console.log(
-				// 	`RetTask : ${taskOutItem.name} : link, ,pptEnd,taskToItem,toIndex`,
-				// 	link,
-				// 	pptEnd,
-				// 	taskToItem
-				// )
+				console.log(
+					`RetTask : ${retLink.id} : from: ${indexTaskFromItem} to ${retLink.toTaskIndex} indexPortRetOffsetFrom ${indexPortRetOffsetFrom} indexPortRetOffsetTo ${indexPortRetOffsetTo} VportSpacing ${iLayout.portLinkVoffset} pptEndY ${pptEnd.y}`
+				)
 
 				const yFromOffset =
-					iLayout.barSpacing -
-					iLayout.barPad -
-					iLayout.portLinkVoffset * iLayout.barSpacing * indexPortRetOffset
-const dropperX = Math.max(
-					xScale(ppt0.x) + triLength * 1.5,
-					xScale(pptEnd.x) + triLength * 1.5)
+					iLayout.barSpacing/2 -
+					iLayout.barPad +
+					iLayout.portLinkVoffset * indexPortRetOffsetFrom
+
+const retLinkHdropperOffset=iLayout.retLinkHdropperOffset
+				const dropperX = Math.max(
+					xScale(ppt0.x) + triLength * 1.5+indexPortRetOffsetFrom*retLinkHdropperOffset,
+					xScale(pptEnd.x) +
+						triLength * 1.5
+				) +	indexPortRetOffsetFrom *retLinkHdropperOffset
+				console.log(`retTask dropperX ${dropperX} indexPortRetOffsetFrom ${indexPortRetOffsetFrom} indexPortRetOffsetTo ${indexPortRetOffsetTo}`)
 
 				let path = [
-					{ x: xScale(ppt0.x), y: ppt0.y + yFromOffset }, 
-					{ x: dropperX, y: ppt0.y + yFromOffset }
+					{ x: xScale(ppt0.x), y: ppt0.y },
+					{ x: dropperX, y: ppt0.y  },
 				] //first point
 
-			
-
-				path.push({ x: dropperX, y: ppt0.y + yFromOffset }) // end less triangle
+				path.push({ x: dropperX, y: ppt0.y  }) // end less triangle
 				path.push({
 					x: dropperX,
 					y: pptEnd.y,
@@ -336,7 +343,7 @@ const dropperX = Math.max(
 
 				if (pptEnd) {
 					// polygon uses x,y sequence in array
-					const color = 'green'
+					
 
 					const nameStart = `Link Start -Ret ${taskDtl[indexTaskFromItem].name} to ${taskD?.name}`
 					const nameLink = `Link -Ret ${taskDtl[indexTaskFromItem].name} to ${taskD?.name}`
@@ -351,41 +358,23 @@ const dropperX = Math.max(
 						pptEnd.y,
 					].toString()
 
-					outputPortCircles.push(
+					output.push(
 						<circle
 							key={`SLink${retLink.id}`}
 							cx={xScale(ppt0.x)}
-							cy={ppt0.y + yFromOffset}
+							cy={ppt0.y }
 							r={iLayout.PortDotSize * iLayout.barSpacing}
-							className={'PortIn'}
-							// fill={color}
-							// stroke='1px'
-					/*		onMouseEnter={(e) =>
-					 			handleMouseEnter({
-									type: e_SeqDiagElement.LinkStart,
-									id: retLink.id,
-									sname: `Slink${retLink.id}`,
-									desc: nameStart,
-								})
-							}
-							onMouseLeave={(e) =>
-								handleMouseLeave({
-									type: e_SeqDiagElement.LinkStart,
-									sname: `Slink${retLink.id}`,
-									id: retLink.id,
-									desc: nameStart,
-								}) 
-							}*/
+							className={clsx('PortIn','RetLink')}
 						/>
 					)
 					output.push(
 						<LinePath
 							key={`Link${retLink.id}`}
+							className={clsx('Path','RetLink')}
 							//curve={curveLinear}  curveLinear is the default so do not need to specify
 							data={path}
 							x={(data) => data.x}
 							y={(data) => data.y}
-							stroke={color || 'orange'}
 							fill='none'
 							strokeWidth='2'
 							radius='4'
@@ -415,9 +404,8 @@ const dropperX = Math.max(
 							key={`ELink${retLink.id}`}
 							className={'inPortTriangle'}
 							points={trianglePoints}
-							fill={color}
 							stroke='1 px'
-						/* 	onMouseEnter={(e) =>
+							/* 	onMouseEnter={(e) =>
 								handleMouseEnter({
 									type: e_SeqDiagElement.Link,
 									id: retLink.id,

@@ -24,6 +24,7 @@ export interface ILayout{
 	barSpacing: number,
 	portLinkHoffset: number,
 	portLinkVoffset: number,
+	retLinkHdropperOffset:number
 	// highlightArrowRatio sets the hover or selected scale
 	highlightSizeRatio: number,
 	cColors:{
@@ -81,7 +82,7 @@ export type TaskNoId = Omit<Task, "id">
 export 	type ILinkOut = {fromTaskId: EntityId, fromTaskIndex: number,id:number|string }
 export	type ILinkIn = {toTaskId: EntityId, toTaskIndex: number ,id:number|string}
 export 	type ILinkFrom = {fromTaskId: EntityId, fromTaskIndex: number,id:number|string,seqLoops:number[][],loopDuration:number|undefined }
-
+export	type IRetPort = {isStart:boolean,id:number|string,otherTaskIndex:number}
 export interface ITaskDtl{
   id:number| string
   index:number
@@ -89,6 +90,8 @@ export interface ITaskDtl{
   duration:number
   inLinks:ILinkOut[]
 	retFroms:ILinkFrom[]
+	retTos:ILinkIn[]
+	retPorts:IRetPort[]
   outLinks:ILinkIn[]
   startTime:number
 	endTime:number
@@ -96,6 +99,11 @@ export interface ITaskDtl{
 	cycleTime:number|undefined
 	floatTime:number|undefined
 	} 
+
+		export interface ILoopListItem
+		{seqStack:number[],
+		loopDuration:number}
+	
 
 export interface XY {
 	x: number 

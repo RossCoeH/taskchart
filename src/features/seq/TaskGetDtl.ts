@@ -7,6 +7,8 @@ import {
 	Link,
 	IloopInfo,
 	ILinkFrom,
+	ILoopListItem,
+	IRetPort,
 } from './seqTypes'
 
 type IgetPrevs = {
@@ -31,8 +33,9 @@ export default function taskGetDtl(
 	console.log('LinkList is: ', linkList)
 	// creates a detailed version of taskmap for plotting
 	// uses same order as task.id // now roll through tasks and add to array
-
+	var maxLoopDuration = 0
 	var taskDtlList: ITaskDtl[] = []
+	var loopList: ILoopListItem[] = [] //init LoopList and add when a completed loop is found
 	// use tasklist forEach so that we can read inprogress list
 	taskList.forEach((curTask, curTaskIndex, taskList) => {
 		//const ctask = state.tasks.entities[taskId] // use for logging
@@ -42,8 +45,11 @@ export default function taskGetDtl(
 		// )
 		//	console.log(`index ${index} - task`, taskid, ctask)
 		var fromRets: ILinkFrom[] = []
+		var toRets: ILinkIn[] = []
+		var retPorts:IRetPort[]=[]
 		var outlinks: ILinkIn[] = []
 		var fromLinks: ILinkOut[] = []
+		var loopList: ILoopListItem[] = []
 		let startTime = 0
 		let endTime = 0
 		// now scan all links once to crete tos,froms,rets
@@ -62,7 +68,7 @@ export default function taskGetDtl(
 			// get endtime of from task from tasksDtl (or 0)
 			const fromTaskEndTime: number = taskDtlList[fromTaskIndex]?.endTime ?? 0
 
-			if (linkEntToTaskId === curTask.id && fromTaskIndex < curTaskIndex) {
+			if (linkEntToTaskId === curTask.id && fromTaskIndex < toTaskIndex) {
 				fromLinks.push({
 					fromTaskId: linkEntToTaskId,
 					fromTaskIndex: fromTaskIndex,
@@ -79,22 +85,44 @@ export default function taskGetDtl(
 					startTime
 				)
 			}
-			if (linkEntToTaskId === curTask.id && fromTaskIndex > curTaskIndex) {
-				// push link without loop analysi - so has a empty seq array
-				fromRets.push({
-					fromTaskId: linkEntFromId,
-					fromTaskIndex: fromTaskIndex,
-					id: linkItem.id,
-					seqLoops: [],
-					loopDuration: undefined,
-				})
-				console.log(
-					'return loop added to task index',
-					toTaskIndex,
-					' link',
-					linkItem
-				)
+
+			if (linkEntToTaskId === curTask.id && toTaskIndex < fromTaskIndex) {
+				// push link without loop analysis - so has a empty seq array
+				{
+					fromRets.push({
+						fromTaskId: linkEntFromId,
+						fromTaskIndex: fromTaskIndex,
+						id: linkItem.id,
+						seqLoops: [],
+						loopDuration: undefined,
+					})
+					retPorts.push({
+						isStart:false,
+						id: linkItem.id,
+						otherTaskIndex: fromTaskIndex,
+					})
+					console.log(
+						`RetTask index to ${curTaskIndex}: return loop End added: link id ${linkItem.id} from index ${fromTaskIndex}`
+					)
+				}
 			}
+	
+			if (linkEntFromTaskId === curTask.id && toTaskIndex < fromTaskIndex) {
+				toRets.push({
+					toTaskId: linkEntFromId,
+					toTaskIndex: toTaskIndex,
+					id: linkItem.id,
+				})
+					retPorts.push({
+						isStart:true,
+						id: linkItem.id,
+					  otherTaskIndex: toTaskIndex,
+					})
+					console.log(
+						`RetTask index from ${fromTaskIndex}: return loop Start added To task index ${toTaskIndex} link id ${linkItem.id} to index ${toTaskIndex}`
+					)
+			}
+
 			// now collect tos and update start time if needed (as any predecessors will already exist and be at a lower index):
 
 			if (
@@ -117,9 +145,14 @@ export default function taskGetDtl(
 			fromRets.sort((aTask, bTask) =>
 				aTask.fromTaskIndex < bTask.fromTaskIndex ? 1.0 : -1.0
 			)
-			outlinks.sort((aTask, bTask) =>
-				aTask.toTaskIndex > bTask.toTaskIndex ? 1.0 : -1.0
+			toRets.sort((aTask, bTask) =>
+				aTask.toTaskIndex < bTask.toTaskIndex ? 1.0 : -1.0
 			)
+			outlinks.sort((aTask, bTask) =>
+
+				aTask.toTaskIndex - bTask.toTaskIndex ? 1.0 : -1.0
+			)
+			retPorts.sort((aPort,bPort)=>  (!aPort.isStart ||  aPort.otherTaskIndex < bPort.otherTaskIndex?1.0:-1.0))
 		})
 		// now push into taskDetail without loop analysis
 		var newTask: ITaskDtl = {
@@ -130,6 +163,8 @@ export default function taskGetDtl(
 			inLinks: fromLinks,
 			outLinks: outlinks,
 			retFroms: fromRets,
+			retTos: toRets,
+			retPorts:retPorts,
 			startTime: startTime,
 			endTime: startTime + curTask.duration,
 			cycleTime: undefined,
@@ -143,20 +178,19 @@ export default function taskGetDtl(
 	const tasksWithRets = taskDtlList.filter((tlink) => tlink.retFroms.length > 0)
 
 	tasksWithRets.forEach((tretdtl) => {
-		var searchTaskItems: IloopInfo[] =[]
+		var searchTaskItems: IloopInfo[] = []
 		tretdtl.retFroms.forEach((tretLink, indextret) => {
 			const retToTaskIndex = tretdtl.index
 			const retFromTaskIndex = tretLink.fromTaskIndex
 			//find the predecessor items and check if the link loop is complete
 			// go backwards and push sequence into arrays until endpoint is found or retloop index is passed.
-			 searchTaskItems.push(
-				{
-					startIndex: retToTaskIndex,
-					endIndex: retFromTaskIndex,
-					seqStack: [retFromTaskIndex],
-					cycleLoopTime: undefined,
-				})
-			 //stacklist of possibles starting with current task
+			searchTaskItems.push({
+				startIndex: retToTaskIndex,
+				endIndex: retFromTaskIndex,
+				seqStack: [retFromTaskIndex],
+				cycleLoopTime: undefined,
+			})
+			//stacklist of possibles starting with current task
 			var foundLoopSeq: IloopInfo[] = []
 			while (searchTaskItems.length > 0) {
 				// iterate search - op returns undefined if array is empty
@@ -201,12 +235,14 @@ export default function taskGetDtl(
 								)
 							})
 
+							loopList.push({ seqStack: curSeq, loopDuration: cycleLoopTime })
 							foundLoopSeq.push({
 								startIndex: retToTaskIndex,
 								endIndex: retFromTaskIndex,
 								seqStack: curSeq,
 								cycleLoopTime: cycleLoopTime,
 							})
+
 							console.log(
 								'completed loop found for indexes: ',
 								curSeq,
@@ -223,20 +259,20 @@ export default function taskGetDtl(
 							seqStack: curSeq,
 							cycleLoopTime: undefined,
 						})
-						console.log(
+						/* 	console.log(
 							'partial search loop to index: ',
 							retToTaskIndex,
 							'partial seq is: ',
 							curSeq
-						)
+						) */
 					})
 				}
 			}
-
+			/* 
 			console.log(
 				'loop seqs',
 				foundLoopSeq.map((item) => item.seqStack)
-			)
+			) */
 			//update taskdetail
 			const currentRetLoop = taskDtlList[tretdtl.index].retFroms[indextret]
 			currentRetLoop.seqLoops = foundLoopSeq.map((item) => item.seqStack)
@@ -248,7 +284,15 @@ export default function taskGetDtl(
 	// 	searchTaskItems.push({startIndex:toTaskIndex,endIndex:curTaskIndex,seqStack:[fTaskItem.fromTaskIndex,curTaskIndex ]})
 
 	//prevTasksIndexes:
-	//now check that the time duration for the return loop
+	//now check that the time float for the return loop
+	const looptimes = loopList.map((item) => item.loopDuration)
+	maxLoopDuration = Math.max(...looptimes)
+	taskDtlList.forEach((item) => {
+		//only update cycletime if item is part of at least one loop
+		if (item.cycleTime != undefined) {
+			item.floatTime = maxLoopDuration - item.duration
+		}
+	})
 	console.log('TaskDtlList before export ', taskDtlList)
 	return taskDtlList
 }

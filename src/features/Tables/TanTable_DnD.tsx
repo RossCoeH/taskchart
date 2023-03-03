@@ -404,7 +404,7 @@ const TanTableDnD:React.FC<ITanTableDND & IgraphInfo> = ({data}) =>{
 		},
 	})
 
-	console.log('HeaderGroups ', table.getHeaderGroups())
+//	console.log('HeaderGroups ', table.getHeaderGroups())
 	// note th needs style position is relative if colsizing is towork - else all resizers placed on top of each other at end of row.
 	return (
 		<DndProvider backend={HTML5Backend}>

@@ -44,14 +44,17 @@ export function SeqDrawDragLine(
 			// 		taskIds[dragToTaskIndex] ?? -1
 			// 	} linkAlreadyExists ${linkAlreadyExists}`
 			// )
-			// define color for return loops
-			const endColor = !linkAlreadyExists &&
+			// define if return loop for colors
+			const isReturnLoop= !linkAlreadyExists &&
 				dragToTaskIndex >= 0 &&
 				taskIds &&
 				taskIds.indexOf(dragStart.startId) > dragToTaskIndex
+			// define color for return loops
+			var endColor = isReturnLoop
 				? 'purple'
 				: 'green';
-			// console.log(`endcolor ${endColor}`)
+				if (linkAlreadyExists) endColor='red'
+		 console.log(`endcolor ${endColor}`)
 			return (
 				<>
 					<line
@@ -60,7 +63,7 @@ export function SeqDrawDragLine(
 						y1={dragStart.y}
 						x2={mousepos.x}
 						y2={mousepos.y}
-						stroke={linkAlreadyExists === true ? 'red' : endColor}
+						stroke={ endColor}
 						strokeDasharray={linkAlreadyExists == true ? '5,5' : '0,0'}
 						strokeWidth='2' />
 					<circle

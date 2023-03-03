@@ -13,7 +13,7 @@ import { localPoint } from '@visx/visx'
 import { Point } from '@visx/visx'
 import { useViewport } from 'react-viewport-hooks'
 import { useAppSelector, useAppDispatch } from '../../app/hooks/hooks'
-import { initialLayout } from './initValues'
+import { initialLayout } from './seqInitValues'
 import {
 	selTasks,
 	selLinks,
@@ -58,7 +58,7 @@ import {
 	EntityState,
 } from '@reduxjs/toolkit'
 import TaskBar from './TaskBar'
-import { initTasksArray, initLinksArray } from './initValues'
+import { initTasksArray, initLinksArray } from './seqInitValues'
 import { link } from 'fs'
 import { DragContext, IDragContext } from './dragContext'
 import PortDot from './PortDot'
@@ -453,7 +453,7 @@ export function Seq() {
 	) => {
 		// e.stopPropagation()
 		e.persist()
- console.log ('MouseMove Seq dragActionActive =', dragActionActive)
+// console.log ('MouseMove Seq dragActionActive =', dragActionActive)
 		if (dragActionActive !== dragAction.none) {
 			//	console.log('mouse Move - isDragging', dragActionActive)
 			//use gPoint to get consistent ref point and avoid typo
@@ -509,12 +509,12 @@ export function Seq() {
 							],
 						}
 					}
-					console.log(
+			/* 		console.log(
 						`mousemove dragto, selInfo`,
 						mousepos.x,
 						mousepos.y,
 						e.target
-					)
+					) */
 					// const newConnectors = connectors.concat(newPath)
 
 					// setconnectors(newConnectors)
@@ -859,7 +859,7 @@ export function Seq() {
 							handleSvgMouseUp(e, e_SeqDiagElement.SeqChart, -1, -1)
 						}
 						onMouseMove={(e: React.MouseEvent) =>
-						{console.log('rect move listener active ', e)
+						{ // console.log('rect move listener active ', e)
 							handleSvgMouseMove(e, e_SeqDiagElement.SeqChart, -1, -1)}
 						}
 					/>

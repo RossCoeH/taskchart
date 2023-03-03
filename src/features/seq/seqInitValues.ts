@@ -4,8 +4,7 @@ import { Link, Task, ILayout } from './seqTypes'
 export const initialLayout: ILayout = {
 	barPad: 7,
 	PortDotSize: 0.1,
-	portTriLength: 0.4, // ratio of barspacing
-	portTriHeight: 0.18, // ratio of barspacing
+
 	numPortIn: 4,
 	numPortOut: 4,
 	numPortReturn: 3,
@@ -19,8 +18,11 @@ export const initialLayout: ILayout = {
 	graphX0: 30,
 	graphAxisColor: '#4380cc',
 	barSpacing: 40,
-	portLinkHoffset: 0.25,
-	portLinkVoffset: 0.3,
+	portTriLength: 12, 
+	portTriHeight: 7, 
+	portLinkHoffset: 9,
+	portLinkVoffset: 9,
+	retLinkHdropperOffset: 9,
 	cColors: {
 		active: 'green',
 		black: 'black',
@@ -71,5 +73,8 @@ export const initLinksArray: Link[] = [
 	{ id: 2, from: 2, to: 3 },
 	{ id: 3, from: 3, to: 4 },
 	{ id: 4, from: 1, to: 4 },
-	{ id: 5, from: 4, to: 1 },
+	{ id: 5, from: 2, to: 1 },
+	{ id: 6, from: 3, to: 1 },
+	{ id: 7, from: 4, to: 1 },
+	{ id: 8, from: 4, to: 2 },
 ]

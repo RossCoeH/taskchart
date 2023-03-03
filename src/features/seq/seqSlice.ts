@@ -26,7 +26,7 @@ import {
 	ILinkOut,
 	ILinkIn,
 } from './seqTypes'
-import { initTasksArray, initLinksArray } from './initValues'
+import { initTasksArray, initLinksArray } from './seqInitValues'
 import { formatDiagnostic } from 'typescript'
 import { useAppDispatch } from '../../app/hooks/hooks'
 import { number } from 'prop-types'
