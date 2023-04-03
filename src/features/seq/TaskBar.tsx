@@ -55,7 +55,7 @@ const TaskBar = (props:any) => {
 		xEnd,
 		xStart,
 		fill,
-	//	onMouseDown,
+		onMouseDown,
 		onMouseUp,
 	onMouseMove,
 		iLayout,
@@ -111,7 +111,7 @@ const TaskBar = (props:any) => {
 	}
 
 	const handleMouseMove = (e: React.MouseEvent<SVGRectElement, MouseEvent>) => {
-		console.log('MouseMove Task - index:', index, selInfo)
+//		console.log('MouseMove Task - index:', index, selInfo)
 		onMouseMove && onMouseMove(e, selInfo)
 	}
 
