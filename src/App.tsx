@@ -54,7 +54,8 @@ function App() {
 //     };
 //   });
   return (
-    // <ViewportProvider >
+
+
     <div className="App">
  
       <header className="App-header">
@@ -70,7 +71,7 @@ function App() {
         <Seq/>
          </div>
     </div>
-    //  </ViewportProvider>
+
   );
 }
 

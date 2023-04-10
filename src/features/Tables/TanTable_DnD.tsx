@@ -1,11 +1,9 @@
 import React, {
 	FC,
-	InputHTMLAttributes,
 	useEffect,
 	useRef,
 	useState,
 } from 'react'
-import ReactDOM from 'react-dom'
 import './TanTableDnD.css'
 
 import {
@@ -34,7 +32,9 @@ import { EntityId, getType } from '@reduxjs/toolkit'
 import { tasksUpsertOne } from '../seq/seqSlice'
 import { JsxElement, TypeOfExpression } from 'typescript'
 import { assert } from 'console'
-import { scaleLinear } from '@visx/visx'
+import { AxisScale, AxisScaleOutput, scaleLinear} from '@visx/visx'
+import { ScaleLinear } from 'd3-scale';
+import { SeqDrawTopAxis } from '../seq/SeqDrawTopAxis'
 
 // add an interface for row update editing
 declare module '@tanstack/react-table' {
@@ -51,7 +51,9 @@ declare module '@tanstack/react-table' {
 
 declare module '@tanstack/table-core' {
 	interface ColumnMeta<TData extends RowData, TValue> {
-		enableColumnEdit: boolean
+		enableColumnEdit: boolean,
+		// iLayout:ILayout,
+		// xScale:typeof scaleLinear,
 	}
 }
 
@@ -65,8 +67,8 @@ const defaultColumn: Partial<ColumnDef<Task>> = {
 		// We need to keep and update the state of the cell normally
 		const [value, setValue] = React.useState(initialValue)
 		// get the column def for the cell and then check if the columnEnableEdit is true
-		const thisColumnDef = table.getColumn(id).columnDef
-		const canEdit = thisColumnDef.meta?.enableColumnEdit ?? false
+		const thisColumnDef = table?.getColumn(id)?.columnDef
+		const canEdit = thisColumnDef?.meta?.enableColumnEdit ?? false
 
 		// When the input is blurred, we'll call our table meta's updateData function
 		const onBlur = () => {
@@ -173,7 +175,7 @@ const defaultColumn: Partial<ColumnDef<Task>> = {
 			//input can only be used with string or number type
 		) {
 			// get column width
-			const colWidth = table.getColumn(id).getSize()
+			const colWidth = table?.getColumn(id)?.getSize()
 			console.log('colWidth ', colWidth)
 			//setting the input type flag restricts numbers to being numeric input
 			return (
@@ -211,9 +213,64 @@ const defaultColumn: Partial<ColumnDef<Task>> = {
 	},
 }
 
+
+
 const columnHelper = createColumnHelper<Task>()
 
-const defaultColumns: ColumnDef<Task>[] = [
+
+
+const DraggableRow: FC<{
+	row: Row<Task>
+	reorderRow: (draggedRowIndex: number, targetRowIndex: number) => void
+}> = ({ row, reorderRow }) => {
+	const [, dropRef] = useDrop({
+		accept: 'row',
+		drop: (draggedRow: Row<Task>) => reorderRow(draggedRow.index, row.index),
+	})
+
+	const [{ isDragging }, dragRef, previewRef] = useDrag({
+		collect: (monitor) => ({
+			isDragging: monitor.isDragging(),
+		}),
+		item: () => row,
+		type: 'row',
+	})
+
+	return (
+		<tr
+			ref={previewRef} //previewRef could go here
+			style={{ opacity: isDragging ? 0.5 : 1 }}
+		>
+			<td ref={dropRef}>
+				<button ref={dragRef}>🟰</button>
+			</td>
+			{row.getVisibleCells().map((cell) => (
+				<td key={cell.id}>
+					{flexRender(cell.column.columnDef.cell, cell.getContext())}
+				</td>
+			))}
+		</tr>
+	)
+}
+
+export interface ITanTableDND{
+	data:ITaskDtl[],
+	iLayout:ILayout,
+		xScale:AxisScale<AxisScaleOutput>,
+}
+export interface IgraphInfo{
+	xScale:typeof scaleLinear
+		yScale:Function,
+		iLayout:ILayout,
+}
+
+
+const TanTableDnD:React.FC<ITanTableDND > = ({data,iLayout,xScale}) =>{
+	//const data = useAppSelector(selTasks.selectAll)
+	const dispatch = useAppDispatch()
+
+	//put default columns her so ILayout and xScale are accessible in scope
+	const defaultColumns: ColumnDef<Task>[] = [
 	{
 		accessorKey: 'id',
 		cell: (info) => info.getValue(),
@@ -279,55 +336,24 @@ const defaultColumns: ColumnDef<Task>[] = [
 			enableColumnEdit: false,
 		},
 	},
+	{
+		accessorKey: 'gannt',
+		cell: (info) => info.getValue()??'-',
+		header: (info) => <svg width={iLayout.graphWidth} height={45}>
+		<g>{SeqDrawTopAxis(iLayout, xScale)}
+		</g>
+		</svg>,
+		footer: (props) => props.column.id,
+		enableResizing: true,
+		minSize: 5,
+		maxSize: 700,
+		size: 100,
+		meta: {
+			enableColumnEdit: false,
+		}, 
+	},
 	
 ]
-
-const DraggableRow: FC<{
-	row: Row<Task>
-	reorderRow: (draggedRowIndex: number, targetRowIndex: number) => void
-}> = ({ row, reorderRow }) => {
-	const [, dropRef] = useDrop({
-		accept: 'row',
-		drop: (draggedRow: Row<Task>) => reorderRow(draggedRow.index, row.index),
-	})
-
-	const [{ isDragging }, dragRef, previewRef] = useDrag({
-		collect: (monitor) => ({
-			isDragging: monitor.isDragging(),
-		}),
-		item: () => row,
-		type: 'row',
-	})
-
-	return (
-		<tr
-			ref={previewRef} //previewRef could go here
-			style={{ opacity: isDragging ? 0.5 : 1 }}
-		>
-			<td ref={dropRef}>
-				<button ref={dragRef}>🟰</button>
-			</td>
-			{row.getVisibleCells().map((cell) => (
-				<td key={cell.id}>
-					{flexRender(cell.column.columnDef.cell, cell.getContext())}
-				</td>
-			))}
-		</tr>
-	)
-}
-
-export interface ITanTableDND{
-	data:ITaskDtl[]
-}
-export interface IgraphInfo{
-	xScale:Function
-		yScale:Function,
-		iLayout:ILayout,
-}
-
-const TanTableDnD:React.FC<ITanTableDND & IgraphInfo> = ({data}) =>{
-	//const data = useAppSelector(selTasks.selectAll)
-	const dispatch = useAppDispatch()
 
 	const [columns] = React.useState<typeof defaultColumns>(() => [
 		...defaultColumns,
@@ -401,6 +427,7 @@ const TanTableDnD:React.FC<ITanTableDND & IgraphInfo> = ({data}) =>{
 				console.log('olddata ', newData, columnId, value)
 				//	alert('data changed to ' + [value, rowIndex, columnId].join(' - '))
 			},
+	
 		},
 	})
 

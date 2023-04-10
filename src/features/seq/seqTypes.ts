@@ -1,6 +1,7 @@
 import { EntityId } from "@reduxjs/toolkit"
 import { CSSProperties } from "react";
 import stackList from "../../helpers/stacklist";
+import { scaleLinear } from "@visx/visx";
 
 export type ColorType= CSSProperties["color"]
 

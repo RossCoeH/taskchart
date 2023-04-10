@@ -1,6 +1,7 @@
 {
   "name": "4_taskchart",
   "version": "0.1.0",
+  "homepage": "https://4_taskchart.github.io/react-gh-pages",
   "private": true,
   "dependencies": {
     "@babel/core": "^7.19.3",
@@ -56,6 +57,7 @@
     "react-simple-resizer": "^2.1.0",
     "react-spring": "^9.6.1",
     "react-tabulator": "^0.15.0",
+    "react-tooltip": "^5.10.0",
     "react-viewport-hooks": "^1.5.0",
     "react-virtualized": "^9.22.3",
     "reactabular": "^8.3.0",
@@ -71,6 +73,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "deploy": "gh-pages -d build", 
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -95,6 +98,7 @@
     "@types/react-virtualized": "^9.21.21",
     "@types/reactabular-table": "^8.14.2",
     "@types/uuid": "^8.3.4",
+    "gh-pages": "^5.0.0",
     "ts-loader": "^9.4.1"
   }
 }

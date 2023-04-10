@@ -1,4 +1,4 @@
-import React, { MouseEventHandler, useMemo, useRef, useState } from 'react'
+import React, {  useMemo, useRef, useState } from 'react'
 import * as _ from 'lodash'
 
 import { Group } from '@visx/group'
@@ -6,12 +6,14 @@ import { Group } from '@visx/group'
 // import { LinePath } from '@visx/visx'
 // import { XYChart } from '@visx/visx'
 import { scaleLinear } from '@visx/visx'
-import { AxisTop, AxisBottom } from '@visx/visx' ///axis'
+import { AxisBottom } from '@visx/visx' ///axis'
 import { GridRows, GridColumns } from '@visx/visx'
 //import react-spring from '@visx/react-spring'
 import { localPoint } from '@visx/visx'
 import { Point } from '@visx/visx'
 import { useViewport } from 'react-viewport-hooks'
+import {Tooltip} from "react-tooltip";
+import 'react-tooltip/dist/react-tooltip.css'  
 import { useAppSelector, useAppDispatch } from '../../app/hooks/hooks'
 import { initialLayout } from './seqInitValues'
 import {
@@ -47,7 +49,6 @@ import {
 	IBranchLink,
 	ILinkIn,
 	ILinkOut,
-	ILayout,
 } from './seqTypes'
 import styles from './Seq.module.scss'
 import { useSelector } from 'react-redux'
@@ -71,6 +72,7 @@ import { assert, debug } from 'console'
 import taskGetDtl from './TaskGetDtl'
 import TanTableDnD from '../Tables/TanTable_DnD'
 import { SeqDrawDragLine } from './SeqDrawDragLine'
+import { SeqDrawTopAxis } from './SeqDrawTopAxis'
 //import MyTable from '../Tables/MyTable'
 
 interface IStartMouseDrag {
@@ -569,22 +571,7 @@ export function Seq() {
 		taskIds
 	)
 
-	const DrawTopAxis = useMemo(
-		() => (
-			<AxisTop
-				axisClassName='graphaxis'
-				top={iLayout.graphPadTop - 1}
-				label='Time (sec)'
-				labelOffset={15}
-				scale={xScale}
-				numTicks={iLayout.graphWidth > 520 ? 10 : 5}
-				stroke='rgb(0,10,10)'
-				strokeWidth='2px'
-				hideZero={true}
-			/>
-		),
-		[xScale, iLayout.graphWidth]
-	)
+	const DrawTopAxis = SeqDrawTopAxis(iLayout, xScale)
 	const DrawRectGrid = () => {
 		const numYticks: number = taskIds.length + 1
 		return (
@@ -824,7 +811,7 @@ export function Seq() {
 	// -- render output starts
 	return (
 		<DragContext.Provider value={DragContextItem}>
-	<	 TanTableDnD data={taskDtl} xScale={xScale} yScale={yScale} iLayout={iLayout}/>
+	<	 TanTableDnD data={taskDtl} xScale={xScale}  iLayout={iLayout}/>
 			<div className='seq graphContainer' onKeyUp={handleKeyPressApp}>
 				<svg
 					width={
@@ -863,19 +850,17 @@ export function Seq() {
 							handleSvgMouseMove(e, e_SeqDiagElement.SeqChart, -1, -1)}
 						}
 					/>
-					{/* <DrawRectGrid /> */}
-					{/* <MyTable/> */}
+				
 					<TaskBars 				/>
 					<DrawInPorts />
-					{/* 
-					<DrawOutPorts/> */}
-					{DrawLinks}
+									{DrawLinks}
 					<DrawDragLine />
 
 					<text x='-70' y='15' transform='rotate(0)' fontSize={10}>
 						Time (Sec)
 					</text>
 				</svg>
+				<br></br>
 				<div>
 					<p>xScale: {(xScale(2) - xScale(1)).toFixed(2)}</p>
 					<p>Selected item: </p>
@@ -899,8 +884,13 @@ export function Seq() {
 						))}{' '}
 					</ul> */}
 				</div>
+
+				   <Tooltip id="registerTip" place="top" >
+        Tooltip for the register button
+      </Tooltip>
 			</div>
 		</DragContext.Provider>
 	)
 }
+
 
