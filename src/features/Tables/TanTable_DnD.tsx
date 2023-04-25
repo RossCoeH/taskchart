@@ -1,39 +1,32 @@
-import React, {
-	FC,
-	useEffect,
-	useRef,
-	useState,
-} from 'react'
+import React, { FC,  useEffect, useRef, useState } from 'react'
 import './TanTableDnD.css'
 
 import {
 	createColumnHelper,
 	ColumnResizeMode,
 	ColumnDef,
-	Column,
-	Cell,
+//	Column,
+// Cell,
 	Row,
 	RowData, // needed for editing extension
-	getFilteredRowModel,
+//	getFilteredRowModel,
 	getPaginationRowModel,
 	flexRender,
 	getCoreRowModel,
 	useReactTable,
-	ColumnMeta,
+//	ColumnMeta,
+	CellContext,
+	ColumnSizingState,
 } from '@tanstack/react-table'
 
 import { DndProvider, useDrag, useDrop } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { ILayout, ITaskDtl, Task } from '../seq/seqTypes'
-import { useAppDispatch, useAppSelector } from '../../app/hooks/hooks'
-import { selTasks, tasksReorder, tasksUpdateOne } from '../seq/seqSlice'
-import { relative } from 'path'
-import { EntityId, getType } from '@reduxjs/toolkit'
-import { tasksUpsertOne } from '../seq/seqSlice'
-import { JsxElement, TypeOfExpression } from 'typescript'
-import { assert } from 'console'
-import { AxisScale, AxisScaleOutput, scaleLinear} from '@visx/visx'
-import { ScaleLinear } from 'd3-scale';
+import { useAppDispatch } from '../../app/hooks/hooks'
+import {  tasksReorder, tasksUpdateOne } from '../seq/seqSlice'
+import { EntityId } from '@reduxjs/toolkit'
+import { AxisScale, AxisScaleOutput } from '@visx/axis'
+import {scaleLinear } from '@visx/scale'
 import { SeqDrawTopAxis } from '../seq/SeqDrawTopAxis'
 
 // add an interface for row update editing
@@ -51,7 +44,7 @@ declare module '@tanstack/react-table' {
 
 declare module '@tanstack/table-core' {
 	interface ColumnMeta<TData extends RowData, TValue> {
-		enableColumnEdit: boolean,
+		enableColumnEdit: boolean
 		// iLayout:ILayout,
 		// xScale:typeof scaleLinear,
 	}
@@ -114,9 +107,8 @@ const defaultColumn: Partial<ColumnDef<Task>> = {
 					span?.current?.offsetWidth
 				)
 				if (span.current !== null)
-					setWidth(
-						Math.max(20, span?.current?.offsetWidth + 35)
-					) //35 used to allow for spin arrows
+					setWidth(Math.max(20, span?.current?.offsetWidth + 35))
+				//35 used to allow for spin arrows
 				else setWidth(35)
 			}, [content])
 
@@ -147,7 +139,7 @@ const defaultColumn: Partial<ColumnDef<Task>> = {
 
 		const handleStartEdit = (e: React.MouseEvent<HTMLElement>): void => {
 			const typeInput = typeof initialValue
-			console.log('canEdit', canEdit, 'is of type', typeInput)
+			console.log('canEdit', canEdit, ' is of type ', typeInput)
 
 			if (canEdit === true) setIsEditing(true)
 		}
@@ -213,11 +205,7 @@ const defaultColumn: Partial<ColumnDef<Task>> = {
 	},
 }
 
-
-
 const columnHelper = createColumnHelper<Task>()
-
-
 
 const DraggableRow: FC<{
 	row: Row<Task>
@@ -253,107 +241,181 @@ const DraggableRow: FC<{
 	)
 }
 
-export interface ITanTableDND{
-	data:ITaskDtl[],
-	iLayout:ILayout,
-		xScale:AxisScale<AxisScaleOutput>,
+export interface ITanTableDND {
+	data: ITaskDtl[]
+	iLayout: ILayout
+	xScale: AxisScale<AxisScaleOutput>
 }
-export interface IgraphInfo{
-	xScale:typeof scaleLinear
-		yScale:Function,
-		iLayout:ILayout,
+export interface IgraphInfo {
+	xScale: typeof scaleLinear
+	yScale: Function
+	iLayout: ILayout
 }
 
-
-const TanTableDnD:React.FC<ITanTableDND > = ({data,iLayout,xScale}) =>{
+const TanTableDnD: React.FC<ITanTableDND> = ({ data, iLayout, xScale }) => {
 	//const data = useAppSelector(selTasks.selectAll)
 	const dispatch = useAppDispatch()
+  const bodyRef= useRef<HTMLDivElement> (null)
+	const DrawGanttAxisHeader = (item: unknown,key:string) => (
+		<svg key = {key} width={iLayout.graphWidth} height={45}>
+			<SeqDrawTopAxis
+				iLayout={iLayout}
+				 xScale={xScale}/>
+		</svg>
+	)
+	// js example of custom render
+	// function MyCell({ value, columnProps: { rest: { someFunc } } }) {
+	//   return <a href="#" onClick={someFunc}>{value}</a>
+	// }
+	const cellGanttValue = (cellItem: CellContext<Task, unknown>): any => {
+		const startTime: number = cellItem.row.getValue('startTime') ?? 0
+		const endTime: number = cellItem.row.getValue('endTime') ?? 10
+		const rStart: number = (xScale(startTime) as number) ?? 10
+		const rEnd: number = (xScale(endTime) as number) ?? 10
+		const rWidth: number = rEnd - rStart
+		const rHeight = iLayout.barSpacing - 2 * iLayout.barPad-4
+		return (
+			<svg 
+			width={iLayout.graphWidth}
+			height={iLayout.barSpacing-4}>
+				<rect
+					x={rStart}
+					y={iLayout.barPad}
+					height={rHeight}
+					width={rWidth}
+					color='purple'
+					stroke='1'
+					fill='green'
+				></rect>
+			</svg>
+		)
+		// end of "gantt item"
+	}
+// draw svg lines:
+const DrawTablepath=():any=>
+{
+	return 		(	<rect
+	        className='tableOverlayRect'
+					x={0}
+					y={200}
+					height={200}
+					width={700}
+					color='purple'
+					stroke='1'
+					fill='green'
+					opacity={0.2}
+					
+				></rect>
+	)
+}
 
 	//put default columns her so ILayout and xScale are accessible in scope
 	const defaultColumns: ColumnDef<Task>[] = [
-	{
-		accessorKey: 'id',
-		cell: (info) => info.getValue(),
-		header: () => <span>id</span>,
-		footer: (props) => props.column.id,
-		minSize: 5,
-		maxSize: 60,
-		size: 20,
-		meta: {
-			enableColumnEdit: false,
-		},
-	},
-	{
-		accessorKey: 'name',
-		//cell: (info) => info.getValue(),
-		header: () => <span>Name</span>,
-		footer: (props) => props.column.id,
-		enableResizing: true,
-		minSize: 5,
-		maxSize: 250,
-		size: 100,
-		meta: {
-			enableColumnEdit: true,
-		},
-	},
-	{
-		accessorFn: (row) => row.duration,
-		id: 'duration',
-		//cell: (info) => info.getValue(),
-		header: () => <span>Duration</span>,
-		footer: (props) => props.column.id,
-		enableResizing: true,
-		minSize: 5,
-		maxSize: 60,
-		//size:80,
-		meta: {
-			enableColumnEdit: true,
-		},
-	},
 		{
-		accessorKey: 'cycleTime',
-		cell: (info) => info.getValue()??'-',
-		header: () => <span>Cycle Time</span>,
-		footer: (props) => props.column.id,
-		enableResizing: true,
-		minSize: 5,
-		maxSize: 250,
-		size: 100,
-		meta: {
-			enableColumnEdit: false,
+			accessorKey: 'id',
+			cell: (info) => info.getValue(),
+			header: () => <span key='id'>id</span>,
+			footer: (props) => props.column.id,
+			minSize: 5,
+			maxSize: 60,
+			size: 20,
+			meta: {
+				enableColumnEdit: false,
+			},
 		},
-	},
 		{
-		accessorKey: 'floatTime',
-		cell: (info) => info.getValue()??'-',
-		header: () => <span>Float</span>,
-		footer: (props) => props.column.id,
-		enableResizing: true,
-		minSize: 5,
-		maxSize: 250,
-		size: 100,
-		meta: {
-			enableColumnEdit: false,
+			accessorKey: 'name',
+			//cell: (info) => info.getValue(),
+			header: () => <span key="name">Name</span>,
+			footer: (props) => props.column.id,
+			enableResizing: true,
+			minSize: 5,
+			maxSize: 250,
+			size: 100,
+			meta: {
+				enableColumnEdit: true,
+			},
 		},
-	},
-	{
-		accessorKey: 'gannt',
-		cell: (info) => info.getValue()??'-',
-		header: (info) => <svg width={iLayout.graphWidth} height={45}>
-		<g>{SeqDrawTopAxis(iLayout, xScale)}
-		</g>
-		</svg>,
-		footer: (props) => props.column.id,
-		enableResizing: true,
-		minSize: 5,
-		maxSize: 700,
-		size: 100,
-		meta: {
-			enableColumnEdit: false,
-		}, 
-	},
-	
-]
+		{
+			accessorFn: (row) => row.duration,
+			id: 'duration',
+			//cell: (info) => info.getValue(),
+			header: () => <span key="duration">Duration</span>,
+			footer: (props) => props.column.id,
+			enableResizing: true,
+			minSize: 5,
+			maxSize: 60,
+			//size:80,
+			meta: {
+				enableColumnEdit: true,
+			},
+		},
+		{
+			accessorKey: 'cycleTime',
+			cell: (info) => info.getValue() ?? '-',
+			header: () => <span key="cycleTime">Cycle Time</span>,
+			footer: (props) => props.column.id,
+			enableResizing: true,
+			minSize: 5,
+			maxSize: 250,
+			size: 100,
+			meta: {
+				enableColumnEdit: false,
+			},
+		},
+		{
+			accessorKey: 'startTime',
+			cell: (info) => info.getValue() ?? '-',
+			header: () => <span key= "startTime">Start Time</span>,
+			footer: (props) => props.column.id,
+			enableResizing: true,
+			minSize: 5,
+			maxSize: 250,
+			size: 100,
+			meta: {
+				enableColumnEdit: false,
+			},
+		},
+		{
+			accessorKey: 'endTime',
+			cell: (info) => info.getValue() ?? '-',
+			header: () => <span key="endtime">End Time</span>,
+			footer: (props) => props.column.id,
+			enableResizing: true,
+			minSize: 5,
+			maxSize: 250,
+			size: 100,
+			meta: {
+				enableColumnEdit: false,
+			},
+		},
+		{
+			accessorKey: 'floatTime',
+			cell: (info) => info.getValue() ?? '-',
+			header: () => <span key="floatTime">Float</span>,
+			footer: (props) => props.column.id,
+			enableResizing: true,
+			minSize: 5,
+			maxSize: 250,
+			size: 100,
+			meta: {
+				enableColumnEdit: false,
+			},
+		},
+		// {
+		// 	accessorKey: 'gantt',
+		// 	cell: (item) => cellGanttValue(item),
+		// 	header: (item) => DrawGanttAxisHeader(item,"gantt"),
+		// 	footer: (props) => props.column.id,
+		// 	enableResizing: true,
+		// 	minSize: 5,
+		// 	maxSize: 700,
+		// 	size: 100,
+		// 	meta: {
+		// 		enableColumnEdit: false,
+		// 	},
+		// },
+	]
 
 	const [columns] = React.useState<typeof defaultColumns>(() => [
 		...defaultColumns,
@@ -396,6 +458,9 @@ const TanTableDnD:React.FC<ITanTableDND > = ({data,iLayout,xScale}) =>{
 	}
 
 	// const rerender = () => setData(() => makeData(20))
+	const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
+
+
 
 	const table = useReactTable({
 		data,
@@ -403,7 +468,11 @@ const TanTableDnD:React.FC<ITanTableDND > = ({data,iLayout,xScale}) =>{
 		defaultColumn, // used for editing cells
 		getCoreRowModel: getCoreRowModel(),
 		getRowId: (row) => row.id.toString(), //good to have guaranteed unique row ids/keys for rendering
-		columnResizeMode,
+		columnResizeMode: "onChange" as ColumnResizeMode,
+    state: {
+      columnSizing,
+    },
+    onColumnSizingChange: setColumnSizing,
 		getPaginationRowModel: getPaginationRowModel(),
 		debugTable: true,
 		debugHeaders: true,
@@ -413,7 +482,6 @@ const TanTableDnD:React.FC<ITanTableDND > = ({data,iLayout,xScale}) =>{
 		meta: {
 			updateData: (rowIndex, columnId, value) => {
 				const dataRowId = data[rowIndex].id
-
 				var newData = { [columnId]: value }
 				dispatch(
 					tasksUpdateOne({
@@ -427,12 +495,33 @@ const TanTableDnD:React.FC<ITanTableDND > = ({data,iLayout,xScale}) =>{
 				console.log('olddata ', newData, columnId, value)
 				//	alert('data changed to ' + [value, rowIndex, columnId].join(' - '))
 			},
-	
 		},
 	})
 
-//	console.log('HeaderGroups ', table.getHeaderGroups())
+// update columnsize with actuals as per discussion:Tanstack/table: getSize returning the wrong value? #3947
+useEffect(() => {
+    const headcells: NodeListOf<HTMLElement> = document.querySelectorAll(
+      ".tanTable thead th"
+    );
+    let newColumnSizing = {};
+ 
+    headcells.forEach((headcell): void => {
+      headcell.style.width = `${headcell.clientWidth}px`;
+
+      newColumnSizing = {
+        ...newColumnSizing,
+        [headcell.dataset.id as string]: headcell.clientWidth,
+      };
+    });
+  console.log("useEffect newColumnsSizing", newColumnSizing)
+    table.setColumnSizing(newColumnSizing);  // here I updated the table columnSizing state
+  }, [table.options.data]); // it is table data, or, you can use the data hook passed into table instance as well
+
+	//	console.log('HeaderGroups ', table.getHeaderGroups())
 	// note th needs style position is relative if colsizing is towork - else all resizers placed on top of each other at end of row.
+	console.log("Table total:",table) 
+	console.log("table State",table.getState())
+//debugger
 	return (
 		<DndProvider backend={HTML5Backend}>
 			<div className='p-2'>
@@ -446,13 +535,13 @@ const TanTableDnD:React.FC<ITanTableDND > = ({data,iLayout,xScale}) =>{
 					</button>
 				</div>
 				<div className='h-4' />
-				<table>
+				<table className='tanTable'>
 					<thead>
 						{table.getHeaderGroups().map((headerGroup) => (
 							<tr key={headerGroup.id}>
 								<th />
 								{headerGroup.headers.map((header) => (
-									<th
+									<th id={header.id}
 										{...{
 											key: header.id,
 											colSpan: header.colSpan,
@@ -491,11 +580,16 @@ const TanTableDnD:React.FC<ITanTableDND > = ({data,iLayout,xScale}) =>{
 							</tr>
 						))}
 					</thead>
-					<tbody>
+					
+					<tbody >
+				
 						{table.getRowModel().rows.map((row) => (
 							<DraggableRow key={row.id} row={row} reorderRow={reorderRow} />
 						))}
+				
+				
 					</tbody>
+			
 					<tfoot>
 						{table.getFooterGroups().map((footerGroup) => (
 							<tr key={footerGroup.id}>
@@ -516,21 +610,27 @@ const TanTableDnD:React.FC<ITanTableDND > = ({data,iLayout,xScale}) =>{
 				</table>
 				{/* debug for data */}
 				{/* <pre>{JSON.stringify(data, null, 2)}</pre> */}
-				{/* debug for col sizing 
+			{/* 	debug for col sizing 
 				<pre>
         {JSON.stringify(
           {
-						columnResizeMode:table.getState().columnOrder,
-            columnSizing: table.getState().columnSizing,
-            columnSizingInfo: table.getState().columnSizingInfo,
+						columnResizeMode:table.getState(),
+            // columnSizing: table.getState().columnSizing,
+            // columnSizingInfo: table.getState().columnSizingInfo,
           },
           null,
           2
         )}
       </pre> */}
+			<pre>
+			<p>BodyRef Ht : {(bodyRef.current?.clientHeight)??"-"}</p>
+			<p>Table {table.getCenterTotalSize()}</p>
+			<p>Colwidth Gantt { table?.getColumn("gantt")?.getSize()} </p>
+			</pre>
 			</div>
 		</DndProvider>
 	)
-}
+}	
+
 
 export default TanTableDnD

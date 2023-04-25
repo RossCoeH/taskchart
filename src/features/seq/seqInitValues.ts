@@ -1,4 +1,4 @@
-import { colors } from 'grommet/themes/base'
+
 import { Link, Task, ILayout } from './seqTypes'
 
 export const initialLayout: ILayout = {
@@ -9,13 +9,13 @@ export const initialLayout: ILayout = {
 	numPortOut: 4,
 	numPortReturn: 3,
 	portTypes: { in: 'In', out: 'out', return: 'return' },
-	graphWidth: 1020,
+	graphWidth: 500,
 	graphHeight: 500,
 	graphPadTop: 45,
-	graphPadLeft: 10,
-	graphPadRight: 20,
+	graphPadLeft: 3,
+	graphPadRight: 40,
 	graphPadBottom: 20,
-	graphX0: 30,
+	graphxFontOffset: 8,  // this gives soace for teh 0 marker font on axis
 	graphAxisColor: '#4380cc',
 	barSpacing: 40,
 	portTriLength: 12, 

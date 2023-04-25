@@ -4,15 +4,25 @@ import { EntityId } from '@reduxjs/toolkit';
 import { ScaleLinear } from 'd3-scale';
 import { dragAction } from './Seq';
 
-export function SeqDrawDragLine(
+interface ISeqDrawDragLine{
 	dragActionActive: dragAction,
 	dragStart: { x: number; y: number; startId: EntityId; senderType: e_SeqDiagElement; } |
 		undefined,
+	xScale:ScaleLinear<number,number,never>,
 	yScale: ScaleLinear<number, number, never>,
 	mousepos: XY | undefined,
 	matchLinks: (dragStartTaskId: EntityId, dragEndTaskId: EntityId) => boolean,
-	taskIds: EntityId[]) {
-	return () => {
+	taskIds: EntityId[]
+}
+
+export const  SeqDrawDragLine= ({
+	dragActionActive,
+	dragStart,
+	xScale,
+	yScale,
+	mousepos,
+	matchLinks,
+	taskIds}:ISeqDrawDragLine)  => {
 		//	const [ drawdragStyle, setDrawdragStyle ] = useState<string>('orange')
 		// early exit if dragAction is none
 		if (dragActionActive === dragAction.none)
@@ -22,7 +32,7 @@ export function SeqDrawDragLine(
 			return null;
 
 		const dragToTaskIndex = Math.floor(yScale.invert(mousepos?.y || -1));
-		const linkAlreadyExists = dragToTaskIndex == -1
+		const linkAlreadyExists = dragToTaskIndex === -1
 			? false
 			: matchLinks(dragStart?.startId, taskIds[ dragToTaskIndex ]);
 
@@ -64,7 +74,7 @@ export function SeqDrawDragLine(
 						x2={mousepos.x}
 						y2={mousepos.y}
 						stroke={ endColor}
-						strokeDasharray={linkAlreadyExists == true ? '5,5' : '0,0'}
+						strokeDasharray={linkAlreadyExists === true ? '5,5' : '0,0'}
 						strokeWidth='2' />
 					<circle
 						// cursor={(linkAlreadyExists===true  && dragStart.startId !== dragToTaskIndex) ? 'not-allowed' : 'crosshair'}
@@ -82,4 +92,4 @@ export function SeqDrawDragLine(
 			return null;
 		}
 	};
-}
+

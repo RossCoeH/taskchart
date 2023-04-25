@@ -1,19 +1,26 @@
-import React, {  useMemo, useRef, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import * as _ from 'lodash'
+import { Text } from '@visx/text'
+
+import { RectClipPath } from '@visx/clip-path'
 
 import { Group } from '@visx/group'
 // import { curveBasis } from '@visx/visx'
 // import { LinePath } from '@visx/visx'
 // import { XYChart } from '@visx/visx'
-import { scaleLinear } from '@visx/visx'
-import { AxisBottom } from '@visx/visx' ///axis'
-import { GridRows, GridColumns } from '@visx/visx'
+import { scaleLinear } from '@visx/scale'
+import { AxisBottom } from '@visx/axis'
+import { GridRows, GridColumns } from '@visx/grid'
 //import react-spring from '@visx/react-spring'
-import { localPoint } from '@visx/visx'
-import { Point } from '@visx/visx'
+import { localPoint } from '@visx/event'
+import { Point } from '@visx/point'
+import { Zoom } from '@visx/zoom'
+import { ProvidedZoom, TransformMatrix } from '@visx/zoom/lib/types'
+import { AxisScale, AxisScaleOutput, AxisTop } from '@visx/axis'
+
 import { useViewport } from 'react-viewport-hooks'
-import {Tooltip} from "react-tooltip";
-import 'react-tooltip/dist/react-tooltip.css'  
+import { Tooltip } from 'react-tooltip'
+import 'react-tooltip/dist/react-tooltip.css'
 import { useAppSelector, useAppDispatch } from '../../app/hooks/hooks'
 import { initialLayout } from './seqInitValues'
 import {
@@ -49,6 +56,9 @@ import {
 	IBranchLink,
 	ILinkIn,
 	ILinkOut,
+	ILayout,
+	ISeqStartMouseDrag,
+	IHandleSeqMouseDownWithTaskId,
 } from './seqTypes'
 import styles from './Seq.module.scss'
 import { useSelector } from 'react-redux'
@@ -59,7 +69,6 @@ import {
 	EntityState,
 } from '@reduxjs/toolkit'
 import TaskBar from './TaskBar'
-import { initTasksArray, initLinksArray } from './seqInitValues'
 import { link } from 'fs'
 import { DragContext, IDragContext } from './dragContext'
 import PortDot from './PortDot'
@@ -67,30 +76,19 @@ import PortTriangle from './PortTriangle'
 import DrawPath from './DrawPath'
 import MakeDrawLinks from './MakeDrawLinks'
 import { useClickOutside, useKeyboardEvent, useToggle } from '@react-hookz/web'
-import TaskList from './TaskList'
 import { assert, debug } from 'console'
 import taskGetDtl from './TaskGetDtl'
 import TanTableDnD from '../Tables/TanTable_DnD'
 import { SeqDrawDragLine } from './SeqDrawDragLine'
 import { SeqDrawTopAxis } from './SeqDrawTopAxis'
+import { FileInput } from 'grommet'
+import EditableCell from '../Editable/EditableCell'
+import { ScaleLinear } from 'd3-scale'
+import SeqDrawTaskBars from './SeqDrawTaskBars'
+// import MyFluentUITable from '../Tables/MyFluentUITable';
 //import MyTable from '../Tables/MyTable'
 
-interface IStartMouseDrag {
-	startElement: e_SeqDiagElement
-	startId: EntityId
-	index?: number
-	x?: number
-	y?: number
-}
 
-interface IEndMouseDrag {
-	endElement: e_SeqDiagElement
-	allowed: boolean
-	endId: EntityId
-	index?: number
-	x?: number
-	y?: number
-}
 
 export const background = '#f3f3f3'
 
@@ -157,7 +155,7 @@ export function Seq() {
 	const nextTaskId = useAppSelector(getNextTaskId)
 	const [toggledMousedDown, toggleMousedDown] = useToggle()
 	const [dragStartInfo, setDragStartInfo] = useState<
-		IStartMouseDrag | undefined
+		ISeqStartMouseDrag | undefined
 	>(undefined)
 	const [seqCursorStyle, setSeqCursorStyle] = useState<e_CursorStyles>(
 		e_CursorStyles.default
@@ -174,7 +172,7 @@ export function Seq() {
 
 	useKeyboardEvent(
 		true,
-		(e) => {
+		(e: KeyboardEvent) => {
 			console.log('keyup event', e)
 			if (e.key === 'Delete') {
 			}
@@ -196,7 +194,7 @@ export function Seq() {
 
 	//let taskDtl: ITaskDtl[] = []
 	const taskDtl = taskGetDtl(taskList, linkList)
-	console.log('exported taskDtl' ,taskDtl)
+	console.log('exported taskDtl', taskDtl)
 	//,[linkUpdateCount,taskUpdateCount])
 
 	// bounds
@@ -216,17 +214,25 @@ export function Seq() {
 	// const yMax = vh - margin.top - margin.bottom
 
 	// scales
- 
+
+	const xScaleDomainInit= [Math.min(0), Math.max(10, maxEndTime)]
+	
+
 	const xScale = useMemo(
-		() => scaleLinear<number>({
-			domain: [ Math.min(0), 100, maxEndTime ],
-			range: [
-				iLayout.graphX0,
-				iLayout.graphWidth + iLayout.graphX0 - iLayout.graphPadRight,
-			],
-		}),
-		[ iLayout.graphX0, iLayout.graphWidth + iLayout.graphPadRight, maxEndTime ]
-	);
+		() =>
+			scaleLinear<number>({
+				domain: [Math.min(0), Math.max(10, maxEndTime)],
+				range: [
+					iLayout.graphxFontOffset,
+					iLayout.graphWidth - iLayout.graphxFontOffset - iLayout.graphPadRight,
+				],
+			}),
+		[
+			iLayout.graphxFontOffset,
+			iLayout.graphWidth + iLayout.graphPadRight,
+			maxEndTime,
+		]
+	)
 
 	const yScale = scaleLinear<number>({
 		domain: [0, taskIds.length + 1],
@@ -264,18 +270,18 @@ export function Seq() {
 	// 	}
 	// }
 
-	const handleSvgMouseDown = (
-		e: React.MouseEvent,
+	const handleSvgMouseDown= ({
+		e,
 		// typeof e_SvgSender[ keyof typeof  e_SvgSender],
-		senderType: e_SeqDiagElement,
-		senderId: EntityId,
-		index: number,
-		x?: number,
-		y?: number
+		senderType,
+		senderId,
+		index,
+		x,
+		y}:IHandleSeqMouseDownWithTaskId
 	) => {
 		// const { onDragStart, resetOnStart } = props
 		if (e !== undefined) {
-		//	e.stopPropagation()
+			//	e.stopPropagation()
 			e.persist()
 		}
 		if (dragActionActive === dragAction.none) {
@@ -365,7 +371,7 @@ export function Seq() {
 
 	const handleSvgMouseUp = (
 		e: React.MouseEvent<Element, MouseEvent>,
-		selItemUp: typeof e_SeqDiagElement[keyof typeof e_SeqDiagElement], //	|{x?: number,		y?: number}
+		selItemUp: (typeof e_SeqDiagElement)[keyof typeof e_SeqDiagElement], //	|{x?: number,		y?: number}
 		id: EntityId,
 		index: number
 	) => {
@@ -455,7 +461,7 @@ export function Seq() {
 	) => {
 		// e.stopPropagation()
 		e.persist()
-// console.log ('MouseMove Seq dragActionActive =', dragActionActive)
+		// console.log ('MouseMove Seq dragActionActive =', dragActionActive)
 		if (dragActionActive !== dragAction.none) {
 			//	console.log('mouse Move - isDragging', dragActionActive)
 			//use gPoint to get consistent ref point and avoid typo
@@ -511,7 +517,7 @@ export function Seq() {
 							],
 						}
 					}
-			/* 		console.log(
+					/* 		console.log(
 						`mousemove dragto, selInfo`,
 						mousepos.x,
 						mousepos.y,
@@ -562,17 +568,11 @@ export function Seq() {
 		}
 	}
 
-	const DrawDragLine = SeqDrawDragLine(
-		dragActionActive,
-		dragStart,
-		yScale,
-		mousepos,
-		matchLinks,
-		taskIds
-	)
 
-	const DrawTopAxis = SeqDrawTopAxis(iLayout, xScale)
-	const DrawRectGrid = () => {
+
+	//const DrawTopAxis = SeqDrawTopAxis(iLayout, xScale)
+	//xScale:ScaleLinear<number,number,never>
+	const DrawGraphGrid = () => {
 		const numYticks: number = taskIds.length + 1
 		return (
 			<Group>
@@ -609,108 +609,19 @@ export function Seq() {
 
 	// console.log(`taskIds, taskEnts`, taskIds, taskEnts)
 
-	const TaskBars = 
-	() => {
-		const output =
-			//useMemo(			() =>
-			taskDtl.map((taskItem, index) => {
-				// taskIds.map((id, index) => {
-				//if (id ===undefined) {returnnull)}
-				//	console.log(`taskEnts, id`, taskEnts, taskEnts[id])
-				// const taskItem = taskDtl.find(item=>item.id===id)
-				//const taskItem = taskDtl[index]
-				if (taskItem === undefined) {
-					return <text>{`Undefined item at index ${index}`}</text>
-				}
-				const taskname: string = taskItem.name || ''
-				// need to get start and end as xscale allows for left offsets and it gets double counted
-				const xStart = xScale(taskItem.startTime)
-				const xEnd = xScale(taskItem.duration + taskItem.startTime) || 0
-				const ytop = index * iLayout.barSpacing + iLayout.barPad
-				const barHeight = Math.round(iLayout.barSpacing - 2 * iLayout.barPad)
-				const fillColor = 'pink'
-
-				const handleLocalMouseDown = (
-					e: React.MouseEvent,
-					index: number,
-					taskId: EntityId
-				) => {
-					handleSvgMouseDown(e, e_SeqDiagElement.TaskBar, taskItem.id, index)
-				}
-				const handleLocalMouseUp = (
-					e: React.MouseEvent,
-					selInfo: typeof e_SeqDiagElement[keyof typeof e_SeqDiagElement],
-					id: EntityId,
-					index: number
-				) => {
-					// console.log(`Mouseup on taskbar `, selInfo)
-					handleSvgMouseUp(e, e_SeqDiagElement.TaskBar, id, index)
-				}
-				const handleLocalMouseEnter = (
-					e: React.MouseEvent,
-					index: number,
-					taskId: EntityId
-				): void => {
-					// console.log(
-					// 	'Seq Chart entered taskid ',
-					// 	taskId,
-					// 	'dragInfo ',
-					// 	dragStartInfo
-					// )
-					if (
-						dragStartInfo?.startId !== undefined &&
-						(taskDtl[index]?.inLinks?.filter(
-							(link: ILinkOut) => link.fromTaskId === dragStartInfo.startId
-						).length > 0 ||
-							taskDtl[index]?.retFroms?.filter(
-								(link: ILinkOut) => link.fromTaskId === dragStartInfo.startId
-							).length > 0)
-					)
-						alert('link already exists')
-				}
-				const taskExtraClasses = 'nodrop'
-
-				return (
-					<TaskBar
-						key={`TaskBar ${taskItem.id}`}
-						taskDtl={taskItem}
-						ytop={ytop}
-						index={index}
-						barHeight={barHeight}
-						xEnd={xEnd}
-						xStart={xStart}
-						fill={fillColor}
-						extraClasses={taskExtraClasses}
-						onMouseDown={(e: React.MouseEvent) =>
-							handleLocalMouseDown(e, index, taskItem.id)
-						}
-						// onMouseEnter={(e: React.MouseEvent) =>
-						// 	handleLocalMouseEnter(e, index, taskItem.id)
-						// }
-						onMouseMove={(e: React.MouseEvent) =>
-							handleSvgMouseMove(
-								e,
-								e_SeqDiagElement.TaskBar,
-								taskItem.id,
-								index
-							)
-						}
-						onMouseUp={(e: React.MouseEvent) =>
-							handleLocalMouseUp(
-								e,
-								e_SeqDiagElement.TaskBar,
-								taskItem.id,
-								index
-							)
-						}
-						iLayout={iLayout}
-					></TaskBar>
-				)
-			})
-		//		,[taskIds, xScale, taskEnts]
-		//	)
-		return <g>{output}</g>
+	const MyText = (text: string, xPos: number, yPos: number) => {
+		return (
+			<Text
+				x={xPos}
+				y={yPos}
+				width={iLayout.graphPadLeft - 6}
+				verticalAnchor='middle'
+			>
+				{text}
+			</Text>
+		)
 	}
+	const DrawTaskBars=SeqDrawTaskBars({taskDtl, xScale, iLayout, handleSvgMouseDown, handleSvgMouseUp, dragStartInfo, handleSvgMouseMove})
 
 	const handleMouseEnter = (selInfo: ISelDiagItem) => {
 		//	console.log('entered Task - index:', index,taskDtl.id, e.target)
@@ -808,87 +719,181 @@ export function Seq() {
 	// 	: 'mouseOveritem:'
 
 	const selectedItemList = useAppSelector(selectedItems)
+
+	const gWidth = iLayout.graphWidth
+	const gHeight = iLayout.barSpacing * taskDtl.length
+	const initialTransformMatrix: TransformMatrix = {
+		scaleX: 1,
+		scaleY: 1,
+		translateX: 0,
+		translateY: 0,
+		skewX: 0,
+		skewY: 0,
+	}
+
+
+	const zoomContainerRef = useRef<SVGElement>(null)
 	// -- render output starts
 	return (
 		<DragContext.Provider value={DragContextItem}>
-	<	 TanTableDnD data={taskDtl} xScale={xScale}  iLayout={iLayout}/>
-			<div className='seq graphContainer' onKeyUp={handleKeyPressApp}>
-				<svg
-					width={
-						iLayout.graphWidth + iLayout.graphPadLeft + iLayout.graphPadRight
+			{/* <	 TanTableDnD data={taskDtl} xScale={xScale}  iLayout={iLayout}/> */}
+			<Zoom<SVGSVGElement>
+				width={gWidth}
+				height={gHeight}
+				scaleXMin={1 / 2}
+				scaleXMax={4}
+				scaleYMin={1 / 2}
+				scaleYMax={4}
+				initialTransformMatrix={initialTransformMatrix}
+			>
+				{(zoom) => {
+					console.log(
+						'zoomTranslateX ',
+						zoom.transformMatrix.translateX,
+						'zoomScaleX',
+						zoom.transformMatrix.scaleX
+					)
+
+					const xScaleDomain = xScale.domain()
+          const xViewTransform:TransformMatrix={
+						translateX:zoom.transformMatrix.translateX,
+					scaleX: zoom.transformMatrix.scaleX,
+    scaleY: 1.0,
+    translateY: 1.0,
+    skewX: 0,
+    skewY: 0,
 					}
-					height={iLayout.graphPadTop}
-				>
-					{DrawTopAxis}
-				</svg>
-				<svg
-					className={seqCursorStyle}
-					x={iLayout.graphPadLeft}
-					y={iLayout.graphPadTop}
-					ref={graphAreaRef}
-					width={
-						iLayout.graphWidth + iLayout.graphPadLeft + iLayout.graphPadRight
+					const xScaleTransformed = scaleLinear({
+						range: xScale.range(), // no change to range as width is same
+						domain: [
+							xScale.invert(
+								(xScale(xScaleDomain[0]) - zoom.transformMatrix.translateX) /
+									zoom.transformMatrix.scaleX
+							),
+							xScale.invert(
+								xScale(xScaleDomain[1] - zoom.transformMatrix.translateX) /
+									zoom.transformMatrix.scaleX
+							),
+						],
+					})
+					console.log('xScaleTransformed: ', xScaleTransformed.domain.toString())
+const textXtransformed= ` matrix(${1/xViewTransform.scaleX}, ${xViewTransform.skewY}, ${xViewTransform.skewX}, ${xViewTransform.scaleY}, ${xViewTransform.translateX/xViewTransform.scaleX}, ${xViewTransform.translateY})`
+
+console.log('textXtransformed', textXtransformed)
+
+console.log('xViewTransformed', xViewTransform.toString(),xViewTransform.translateX,xViewTransform.scaleX)
+					const handleZoomReset = (zoom: ProvidedZoom<SVGSVGElement>) => {
+						console.log('zoom reset')
+						zoom.reset() //handler for rest of zoom}
 					}
-					height={graphHeight + iLayout.graphPadTop + iLayout.graphPadBottom}
-				>
-					<rect
-					key='graphZoneBackground'
-						x={0}
-						y={0}
-						width={iLayout.graphWidth}
-						height={graphHeight}
-						fill={background}
-						rx={14}
-						onMouseDown={(e: React.MouseEvent) =>
-							handleSvgMouseDown(e, e_SeqDiagElement.SeqChart, -1, -1)
-						}
-						onMouseUp={(e: React.MouseEvent) =>
-							handleSvgMouseUp(e, e_SeqDiagElement.SeqChart, -1, -1)
-						}
-						onMouseMove={(e: React.MouseEvent) =>
-						{ // console.log('rect move listener active ', e)
-							handleSvgMouseMove(e, e_SeqDiagElement.SeqChart, -1, -1)}
-						}
-					/>
-				
-					<TaskBars 				/>
-					<DrawInPorts />
+					return (
+						<>
+							<div className='seq graphContainer' onKeyUp={handleKeyPressApp}>
+								{/* // use an outer div here to capture keyup as svg cannot do this */}
+								<svg
+									className='seqGraphAxis'
+									width={
+										iLayout.graphWidth +
+										iLayout.graphPadLeft +
+										iLayout.graphPadRight
+									}
+									height={iLayout.graphPadTop}
+								>
+									<SeqDrawTopAxis iLayout={iLayout} xScale={xScaleTransformed} />
+								</svg>
+								<svg
+									className='seqGraphContent'
+									width={iLayout.graphWidth }
+									height={iLayout.graphHeight}
+									x={0}
+									style={{
+										cursor: zoom.isDragging ? 'grabbing' : 'auto',
+										touchAction: 'none',
+									}}
+									ref={zoom.containerRef}
+									onDoubleClick={(e) => handleZoomReset(zoom)}
+									onDragEnd={zoom.dragEnd}
+									onMouseLeave={() => {
+										if (zoom.isDragging) zoom.dragEnd()
+									}}
+								>
+									<rect
+										key='graphZoneBackground'
+										x={iLayout.graphPadLeft}
+										//	y={iLayout.graphPadTop}
+										width={
+											iLayout.graphWidth +
+											iLayout.graphPadLeft -
+											+iLayout.graphxFontOffset
+										}
+										height={graphHeight}
+										fill={background}
+										onMouseDown={(e: React.MouseEvent) =>
+											handleSvgMouseDown({e:e,senderType: e_SeqDiagElement.SeqChart,index:undefined,x: -1,y: -1})
+										}
+										onMouseUp={(e: React.MouseEvent) =>
+											handleSvgMouseUp(e, e_SeqDiagElement.SeqChart, -1, -1)
+										}
+										onMouseMove={(e: React.MouseEvent) => {
+											// console.log('rect move listener active ', e)
+											handleSvgMouseMove(e, e_SeqDiagElement.SeqChart, -1, -1)
+										}}
+										transform={textXtransformed}
+										// onDragStart={zoom.dragStart}
+										// onDrag={zoom.dragMove}
+										// onDragEnd={zoom.dragEnd}
+										// onBlur={zoom.dragEnd}
+									/>
+									<DrawGraphGrid/>
+									<DrawTaskBars  />
+									<DrawInPorts/>
 									{DrawLinks}
-					<DrawDragLine />
+									<SeqDrawDragLine 					
+		dragActionActive={dragActionActive}
+		dragStart ={dragStart}
+		xScale={xScale}
+		yScale={yScale}
+		mousepos={mousepos}
+		matchLinks={matchLinks}
+		taskIds={taskIds}
+/>
+									{/* <MyText text= 'tryme' xPos={2} yPos={iLayout.barSpacing/2}/> */}
+								</svg>
+							</div>
 
-					<text x='-70' y='15' transform='rotate(0)' fontSize={10}>
-						Time (Sec)
-					</text>
-				</svg>
-				<br></br>
-				<div>
-					<p>xScale: {(xScale(2) - xScale(1)).toFixed(2)}</p>
-					<p>Selected item: </p>
-					{/* <p>Mouse is over item: {mouseOverItem??''} </p> */}
+							<br></br>
+							<div>
+								<p>xScale: {(xScale(2) - xScale(1)).toFixed(2)}</p>
+								<p>Selected item: </p>
+								{/* <p>Mouse is over item: {mouseOverItem??''} </p> */}
 
-					{/* //	<p>{dragposTxt} </p> */}
-					<p>{mouseposTxt} </p>
-					{/* <p>{txtMouseOver}</p> */}
-					{/* <ul>
+								{/* //	<p>{dragposTxt} </p> */}
+								<p>{mouseposTxt} </p>
+								{/* <p>{txtMouseOver}</p> */}
+								{/* <ul>
 					{selectedItemList.map((item, index) => (
 						<li key={index}>{item.sname}</li>
 					))}
 				</ul> */}
 
-					<div>Press any keyboard keys and they will appear below.</div>
-					<p>You have pressed</p>
+								<div>Press any keyboard keys and they will appear below.</div>
+								<p>You have pressed</p>
 
-					{/* <ul>
+								{/* <ul>
 						{keyInlist.map((k, i) => (
 							<li key={`${i}_${k}`}>{k}</li>
 						))}{' '}
 					</ul> */}
-				</div>
+							</div>
 
-				   <Tooltip id="registerTip" place="top" >
-        Tooltip for the register button
-      </Tooltip>
-			</div>
+							<Tooltip id='registerTip' place='top'>
+								Tooltip for the register button
+							</Tooltip>
+						</>
+					)
+				}}
+			</Zoom>{' '}
+			)
 		</DragContext.Provider>
 	)
 }

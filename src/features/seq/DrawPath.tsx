@@ -1,7 +1,7 @@
 import React from 'react'
-import {LinePath} from '@visx/visx'
+import {LinePath} from '@visx/shape'
 import {XY} from './seqTypes'
-import {scaleLinear} from '@visx/visx'
+import {scaleLinear} from '@visx/scale'
 
 export interface IDrawPath{
   path:(XY[]), 

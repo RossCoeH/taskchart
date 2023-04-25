@@ -194,7 +194,7 @@ const [activeEditCellKey, setActiveEditCellKey] = useState<string>("")
 											className={clx(classes.resizehandle ,{[classes.resizeAtMin]:colIsMinWidth})}
 											style={resizeStyle}
 											onMouseDown={(e) => mouseDownResize(e, idx)}
-											onMouseMove={mouseMoveHandler}
+											onMouseMove={e=> mouseMoveHandler(e)}
 										></div>
 									</span>
 								</th>
@@ -219,7 +219,7 @@ const [activeEditCellKey, setActiveEditCellKey] = useState<string>("")
 	// )
 
 	const mouseMoveHandler = useCallback(
-		(e) => {
+		(e:React.MouseEvent) => {
 			console.log(
 				`mousemove event`,
 				e.clientX,
@@ -275,7 +275,7 @@ const [activeEditCellKey, setActiveEditCellKey] = useState<string>("")
 	)
 
 	const mouseUpHandler = useCallback(
-		(e) => {
+		(e:MouseEvent) => {
 			if (activeColIdx > -1) {
 				e.stopPropagation()
 				if (activeColIdx > 0) {

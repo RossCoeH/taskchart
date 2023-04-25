@@ -1,38 +1,25 @@
 import {
-	AsyncThunk,
 	createAsyncThunk,
 	createEntityAdapter,
 	createSlice,
-	Dictionary,
-	EntityAdapter,
 	EntityId,
 	EntityState,
 	PayloadAction,
-	ThunkAction,
 	current,
 	Update,
 } from '@reduxjs/toolkit'
-import { RootState, AppThunk, AppDispatch } from '../../app/store'
+import { RootState, AppThunk } from '../../app/store'
 import { fetchCount } from './seqAPI'
 import {
 	Task,
 	Link,
-	TaskNoId,
 	IArrayOrderMove,
 	e_SeqDiagElement,
 	ISelDiagItem,
-	IBranchLink,
-	ITaskDtl,
-	ILinkOut,
-	ILinkIn,
 } from './seqTypes'
 import { initTasksArray, initLinksArray } from './seqInitValues'
-import { formatDiagnostic } from 'typescript'
-import { useAppDispatch } from '../../app/hooks/hooks'
-import { number } from 'prop-types'
-import _ from 'lodash'
-import { stackOffsetSilhouette } from 'd3-shape'
-import { type } from 'os'
+//import _ from 'lodash'
+
 // The function below is called a thunk and allows us to perform async logic. It
 // can be dispatched like a regular action: `dispatch(incrementAsync(10))`. This
 // will call the thunk with the `dispatch` function as the first argument. Async
@@ -61,7 +48,6 @@ export const incrementLinkId= createAsyncThunk(
 const tasksAdapter = createEntityAdapter<Task>()
 const linksAdapter = createEntityAdapter<Link>()
 
-
 export interface ISelItem {
 	type: e_SeqDiagElement
 	id: EntityId | undefined
@@ -80,8 +66,8 @@ export interface SeqState {
 	selectedItems: ISelDiagItem[]
 	nextLinkId: number
 	nextTaskId: number
-	linkUpdateCount:number // used to watch for changes in logic
-	taskUpdateCount:number // used to watch for cahgnes in object
+	linkUpdateCount: number // used to watch for changes in logic
+	taskUpdateCount: number // used to watch for changes in object
 }
 
 interface PartialHasId {
@@ -98,9 +84,6 @@ export const EntArrayToAdapter = (ents: Array<PartialHasId>) => {
 	return { ids: ids, entities: entities }
 }
 
-//start with no taskdtl
-const initTaskDtl:ITaskDtl[]=[]
-
 export const seqSlice = createSlice({
 	name: 'seq',
 	initialState: <SeqState>{
@@ -113,23 +96,26 @@ export const seqSlice = createSlice({
 		selectedItems: [],
 		nextLinkId: 4,
 		nextTaskId: 6,
-		linkUpdateCount:0,
-		taskUpdateCount:0,
+		linkUpdateCount: 0,
+		taskUpdateCount: 0,
 	},
 
 	// The `reducers` field lets us define reducers and generate associated actions
 	reducers: {
 		linksAddOne: (state, entity: PayloadAction<Link>) => {
 			// check that id is not already used
-			let proposedNewId:number = state.nextLinkId
-			while (proposedNewId && state.links.entities[proposedNewId] !==undefined) {
-			   proposedNewId++
-		//	   console.log(`NextLinkId has been incremented to`, proposedNewId )
-			 }
-			
-		//	console.log(`input redux link`, entity)
+			let proposedNewId: number = state.nextLinkId
+			while (
+				proposedNewId &&
+				state.links.entities[proposedNewId] !== undefined
+			) {
+				proposedNewId++
+				//	   console.log(`NextLinkId has been incremented to`, proposedNewId )
+			}
+
+			//	console.log(`input redux link`, entity)
 			const newLink: Link = { ...entity.payload, id: proposedNewId }
-			console.log(`adding into redux new link as`,proposedNewId, entity)
+			console.log(`adding into redux new link as`, proposedNewId, entity)
 			linksAdapter.addOne(state.links, newLink)
 			state.nextLinkId = proposedNewId + 1
 			console.log('current state after LinksAddOne', current(state))
@@ -146,49 +132,40 @@ export const seqSlice = createSlice({
 			state.linkUpdateCount++ //update to show link logic changed
 		},
 
-
-
-
 		tasksAddOne: (state, entity: PayloadAction<Task>) => {
-	
 			var newTaskId = state.nextTaskId
-					// check that id is not already used - increment if already used
-			while (newTaskId && state.tasks.entities[newTaskId] !==undefined) {
+			// check that id is not already used - increment if already used
+			while (newTaskId && state.tasks.entities[newTaskId] !== undefined) {
 				newTaskId++
-				   console.log(`newTaskId added `, newTaskId )
-			 }
+				console.log(`newTaskId added `, newTaskId)
+			}
 
 			// console.log(`input redux task`, entity)
 			const newTask: Task = { ...entity.payload, id: newTaskId }
-		//	console.log(`adding into redux new task`, entity)
+			//	console.log(`adding into redux new task`, entity)
 			tasksAdapter.addOne(state.tasks, newTask)
 			state.nextTaskId = newTaskId + 1
-						state.taskUpdateCount++ //update to show link logic changed
+			state.taskUpdateCount++ //update to show link logic changed
 		},
 		tasksUpsertOne: (state, entity: PayloadAction<Task>) => {
 			tasksAdapter.upsertOne(state.tasks, entity)
 			state.taskUpdateCount++ //update to show link logic changed
-
 		},
 		tasksUpdateOne: (state, entity: PayloadAction<Update<Task>>) => {
 			tasksAdapter.updateOne(state.tasks, entity)
-								state.taskUpdateCount++ //update to show link logic changed
-
+			state.taskUpdateCount++ //update to show link logic changed
 		},
 		tasksAddMany: (state, entities: PayloadAction<Task[]>) => {
 			tasksAdapter.addMany(state.tasks, entities)
-								state.taskUpdateCount++ //update to show link logic changed
-
+			state.taskUpdateCount++ //update to show link logic changed
 		},
 		tasksSetAll: (state, entities: PayloadAction<Task[]>) => {
 			tasksAdapter.setAll(state.tasks, entities)
-								state.taskUpdateCount++ //update to show link logic changed
-
+			state.taskUpdateCount++ //update to show link logic changed
 		},
 		tasksRemoveMany: (state, entities: PayloadAction<EntityId[]>) => {
 			tasksAdapter.removeMany(state.tasks, entities)
-								state.taskUpdateCount++ //update to show link logic changed
-
+			state.taskUpdateCount++ //update to show link logic changed
 		},
 
 		tasksReorder: (state, entities: PayloadAction<IArrayOrderMove>) => {
@@ -207,8 +184,7 @@ export const seqSlice = createSlice({
 
 			//TODO test reorder entities setData([...data])
 			console.log('after id move', current(state.tasks.ids))
-								state.taskUpdateCount++ //update to show link logic changed
-
+			state.taskUpdateCount++ //update to show link logic changed
 		},
 		setMouseOverItem: (state, action: PayloadAction<ISelDiagItem>) => {
 			state.mouseOverItem = action.payload
@@ -216,7 +192,7 @@ export const seqSlice = createSlice({
 		setMouseDownInItem: (state, action: PayloadAction<ISelDiagItem>) => {
 			state.mouseDownInItem = action.payload
 		},
-    
+
 		resetMouseOverItem: (state, action: PayloadAction<ISelDiagItem>) => {
 			if (
 				action.payload.type === state.mouseOverItem?.type &&
@@ -226,7 +202,7 @@ export const seqSlice = createSlice({
 				// have checked that we are removing the right item
 				state.mouseOverItem = undefined
 		},
-    	setSelectedItem: (state, action: PayloadAction<ISelDiagItem>) => {
+		setSelectedItem: (state, action: PayloadAction<ISelDiagItem>) => {
 			state.selectedItems = [action.payload]
 		},
 		toggleDiagSelectedItem: (state, action: PayloadAction<ISelDiagItem>) => {
@@ -243,15 +219,13 @@ export const seqSlice = createSlice({
 		},
 		removeSelectedItem: (state, action: PayloadAction<ISelItem>) => {
 			state.selectedItems.filter((item) => item.sname !== action.payload.sname)
-											state.linkUpdateCount++ //update to show link logic changed
-					state.taskUpdateCount++ //update to show link logic changed
-
+			state.linkUpdateCount++ //update to show link logic changed
+			state.taskUpdateCount++ //update to show link logic changed
 		},
 		removeAllSelectedItems: (state, action: PayloadAction<void>) => {
 			state.selectedItems = []
-								state.linkUpdateCount++ //update to show link logic changed
-					state.taskUpdateCount++ //update to show link logic changed
-
+			state.linkUpdateCount++ //update to show link logic changed
+			state.taskUpdateCount++ //update to show link logic changed
 		},
 
 		// const tasksAddOne=(state,entity){tasksAdapter.addOne(state.tasks,entity)},
@@ -306,7 +280,7 @@ export const {
 	resetMouseOverItem,
 	setMouseOverItem,
 	setMouseDownInItem,
-  setSelectedItem,
+	setSelectedItem,
 	toggleDiagSelectedItem,
 	removeSelectedItem,
 	removeAllSelectedItems,
@@ -321,8 +295,12 @@ export const getNextLinkId = (state: RootState) => state.seq.nextLinkId
 export const getNextTaskId = (state: RootState) => state.seq.nextTaskId
 export const linkUpdateCount = (state: RootState) => state.seq.linkUpdateCount
 export const taskUpdateCount = (state: RootState) => state.seq.taskUpdateCount
-export const selectTasksAll=tasksAdapter.getSelectors((state:RootState)=>state.seq.tasks).selectAll
-export const selectLinksAll= linksAdapter.getSelectors((state:RootState)=>state.seq.links).selectAll
+export const selectTasksAll = tasksAdapter.getSelectors(
+	(state: RootState) => state.seq.tasks
+).selectAll
+export const selectLinksAll = linksAdapter.getSelectors(
+	(state: RootState) => state.seq.links
+).selectAll
 // export const {
 //   selectAll(): selectTodos,
 //   selectById: selectTodoById
@@ -361,12 +339,12 @@ export const incrementIfOdd =
 	}
 
 export default seqSlice.reducer
-function Dispatch(
-	arg0: string,
-	dispatch: any,
-	Dispatch: any,
-	state: any,
-	RootState: any
-) {
-	throw new Error('Function not implemented.')
-}
+// function Dispatch(
+// 	arg0: string,
+// 	dispatch: any,
+// 	Dispatch: any,
+// 	state: any,
+// 	RootState: any
+// ) {
+// 	throw new Error('Function not implemented.')
+// }

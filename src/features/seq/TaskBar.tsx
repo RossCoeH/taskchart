@@ -6,7 +6,8 @@ import React, {
 	useState,
 } from 'react'
 import { Task, ILayout, ITaskDtl, e_SeqDiagElement } from './seqTypes'
-import { scaleLinear, BarRounded } from '@visx/visx'
+import {BarRounded } from '@visx/shape'
+import { scaleLinear } from '@visx/scale'
 import PortDot from './PortDot'
 import PortTriangle from './PortTriangle'
 import { DragContext } from './dragContext'

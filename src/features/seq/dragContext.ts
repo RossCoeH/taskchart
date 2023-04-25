@@ -1,5 +1,3 @@
-
-import { scaleLinear } from '@visx/visx'
 import { createContext } from 'react'
 import {ILayout} from './seqTypes'
 

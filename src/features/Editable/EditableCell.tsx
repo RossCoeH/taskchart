@@ -72,7 +72,7 @@ const editRef = useRef(null);
 
 
 
-    useClickOutside(editRef, (e) => {
+    useClickOutside(editRef, (e:any) => {
       console.log ('useclickOutside event', e)
 		
       // window.alert('told ya! - time to stop editing')
@@ -205,7 +205,7 @@ const handleStopEdit=()=>setIsEditing(false)
             
 							onBlur={() => handleStopEdit()}
 					/>
-          {errormsg.current && <p>{errormsg}</p>}
+          {errormsg.current && <p>{errormsg.current??'no error'}</p>}
 				{/* {errormsg.current !== null && <TtipPortal msg={errormsg.current} />} */}
 				</React.Fragment>
 			)

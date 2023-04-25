@@ -6,7 +6,7 @@ import {
 	ISelDiagItem,
 	ITaskDtl,
 } from './seqTypes'
-import { LinePath } from '@visx/visx'
+import { LinePath } from '@visx/shape'
 
 import {
 	toggleDiagSelectedItem,
@@ -37,8 +37,8 @@ const MakeDrawLinks = (
 	const outPort_x = (taskItem: ITaskDtl, taskOutportIndex: number) => {
 		const output =
 			taskItem.startTime +
-			taskItem.duration / 2 -
-			iLayout.portLinkHoffset * taskOutportIndex
+			taskItem.duration / 2 //-
+			//iLayout.portLinkHoffset * taskOutportIndex
 		// console.log(`taskIndex @${taskIndex} ,  outPortx=${output} -`, taskItem)
 		return output
 	}
@@ -114,11 +114,11 @@ const MakeDrawLinks = (
 				// 	taskToItem
 				// )
 
-				const xPortOffset = 0 //- iLayout.portLinkHoffset * iLayout.barSpacing * indexInLink
+				const xPortOffset = 0-iLayout.portLinkHoffset * indexTaskOutLink //- iLayout.portLinkHoffset * iLayout.barSpacing * indexInLink
 
 				let path = [
 					indexInLink > 0
-						? { x: xScale(ppt0.x) * indexTaskOutLink, y: ppt0.y } // initial point
+						? { x: xScale(ppt0.x)+xPortOffset , y: ppt0.y } // initial point
 						: { x: xScale(ppt0.x) + xPortOffset, y: ppt0.y }, //subsequent indexes
 				] //first point
 				path.push({ x: xScale(ppt0.x) + xPortOffset, y: ppt0.y })

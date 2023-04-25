@@ -11,13 +11,15 @@ import TestHover from './features/seq/TestHover';
 ///import GrommetTable from './features/Tables/GrommetTable';
 
 import Rectabular from './excluded/Rectabular'
-import TanTableDnD from './features/Tables/TanTable_DnD'
-import TanTableResize0 from './features/seq/Tantable_Resize0';
-import RCV_Grid from './features/RVG_table/RCV_grid';
+//import TanTableDnD from './features/Tables/TanTable_DnD'
+//import TanTableResize0 from './features/seq/Tantable_Resize0';
 import TwoColorsInput from './features/Inputs/TwoColorsInput/TwoColorsInput';
 import MyTsGrid from './features/MyTsGrid';
 import MyTable from './features/Tables/MyTable';
-import GrommetTable from './features/Tables/GrommetTable';
+import { ZoomXYChart } from './features/seq/ZoomXYChart';
+import ZoomI from './features/seq/ZoomIExample';
+// import GrommetTable from './features/Tables/GrommetTable';
+//import FluentTable from './excluded/FluentUITable';
 
 // import ReactTabTable from './features/Tables/ReactTabTable.xsx'
 
@@ -59,17 +61,22 @@ function App() {
     <div className="App">
  
       <header className="App-header">
+   
         <p>
           My Chart 4
         </p>
          </header> 
-         <TwoColorsInput startChars="v" color='orange' endChars='e' value='value' 
+    {/*    <TwoColorsInput startChars="v" color='orange' endChars='e' value='value' 
          onChange ={(e)=>console.log(`( input change.target.value)`, e)}  
-         />
+         /> 
+         */}   
          <div className='TableGraphContainer'>
-        
+    
         <Seq/>
+        {/* <ZoomXYChart />
+        <ZoomI width={500} height={400} /> */}
          </div>
+      
     </div>
 
   );
