@@ -1,12 +1,15 @@
 import React, { ReactNode } from 'react'
 import {
 	e_SeqDiagElement,
+	IDrawTasks,
 	ILayout,
 	ILinkOut,
-	ISelDiagItem,
+ ISelInfo,
+ ISeqInfo,
 	ITaskDtl,
 } from './seqTypes'
 import { LinePath } from '@visx/shape'
+import { ScaleLinear } from 'd3-scale'
 
 import {
 	toggleDiagSelectedItem,
@@ -18,14 +21,14 @@ import './MakeDrawLinks.scss'
 import clsx from 'clsx'
 
 const MakeDrawLinks = (
-	taskDtl: ITaskDtl[],
-	iLayout: ILayout,
-	xScale: any,
-	yScale: any,
-	// taskEnts: Dictionary<Task>,
-	handleMouseEnter: (selInfo: ISelDiagItem) => void,
-	handleMouseLeave: (selInfo: ISelDiagItem) => void,
-	handleKeyPressApp: (e: React.KeyboardEvent<HTMLElement>) => void
+{	taskDtl ,
+	iLayout,
+	xScale ,
+	handleMouseEnter,
+	handleMouseLeave,
+	handleMouseDown,
+	handleMouseUp,
+}:IDrawTasks
 	//	outPort_x:(taskItem: ITaskDtl, taskIndex: number) =>number,
 ) => {
 	const triHeight = iLayout.portTriHeight 
@@ -93,7 +96,12 @@ const MakeDrawLinks = (
 				if (taskFrom === undefined) {
 					alert('error in program - FromTask cannot be found in MakeDrawLinks')
 				}
-
+	const selInfoILinkIn: ISelInfo = {
+		type: e_SeqDiagElement.Link,
+		id: inLink.id,
+		sname: `InLink ${taskFrom.name} - ${indexInLink}`,
+		desc: `InLink ${taskFrom.name} to ${taskD.name}`,
+	}
 				const indexTaskOutLink = taskDtl[indexTaskFrom].outLinks.findIndex(
 					(item) => item.id === inLink.id
 				)
@@ -147,19 +155,19 @@ const MakeDrawLinks = (
 					const nameStart = `Link Start -Task ${taskDtl[indexTaskFrom].name} to ${taskDtl[indexTaskTo]?.name}`
 					const nameLink = `Link Task ${taskDtl[indexTaskFrom]?.name} to ${taskDtl[indexTaskTo].name}`
 					const nameEnd = `Link End -Task ${taskDtl[indexTaskFrom]?.name} to ${taskDtl[indexTaskTo]?.name}`
-					const selInfoS: ISelDiagItem = {
+					const selInfoS: ISelInfo = {
 						type: e_SeqDiagElement.LinkStart,
 						id: inLink.id,
-						sname: `Slink${inLink.id}`,
+						sname: `Slink ${inLink.id}`,
 						desc: nameStart,
 					}
-					const selInfoL: ISelDiagItem = {
+					const selInfoL: ISelInfo = {
 						type: e_SeqDiagElement.Link,
 						id: inLink.id,
-						sname: `link${inLink.id}`,
+						sname: `link ${inLink.id}`,
 						desc: nameStart,
 					}
-					const selInfoE: ISelDiagItem = {
+					const selInfoE: ISelInfo = {
 						type: e_SeqDiagElement.LinkEnd,
 						id: inLink.id,
 						sname: `Elink${inLink.id}`,
@@ -193,7 +201,7 @@ const MakeDrawLinks = (
 
 					// console.log(`App isHover over link`,	appMouseOverItem?.sname || '',	dotScale,triScale	)
 
-					const onMouseUp = (selInfo: ISelDiagItem): void => {
+					const onMouseUp = (selInfo: ISelInfo): void => {
 						console.log(`Mouseup`, selInfo)
 						dispatch(toggleDiagSelectedItem(selInfo))
 					}
@@ -311,7 +319,12 @@ const MakeDrawLinks = (
 				console.log(
 					`RetTask : ${retLink.id} : from: ${indexTaskFromItem} to ${retLink.toTaskIndex} indexPortRetOffsetFrom ${indexPortRetOffsetFrom} indexPortRetOffsetTo ${indexPortRetOffsetTo} VportSpacing ${iLayout.portLinkVoffset} pptEndY ${pptEnd.y}`
 				)
-
+	const selInfoRet: ISelInfo= {
+		type: e_SeqDiagElement.Link,
+		id: retLink.id,
+		sname: `RetLink ${taskD.id} - ${indexTaskFromItem}`,
+		desc: `RetLink${taskD.id} - ${indexTaskFromItem}`,
+	}
 				const yFromOffset =
 					iLayout.barSpacing/2 -
 					iLayout.barPad +

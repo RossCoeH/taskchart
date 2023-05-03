@@ -5,7 +5,7 @@ import React, {
 	useMemo,
 	useState,
 } from 'react'
-import { Task, ILayout, ITaskDtl, e_SeqDiagElement } from './seqTypes'
+import { Task, ILayout, ITaskDtl, e_SeqDiagElement, ISelInfo } from './seqTypes'
 import {BarRounded } from '@visx/shape'
 import { scaleLinear } from '@visx/scale'
 import PortDot from './PortDot'
@@ -13,7 +13,6 @@ import PortTriangle from './PortTriangle'
 import { DragContext } from './dragContext'
 import { useAppDispatch, useAppSelector } from '../../app/hooks/hooks'
 import {
-	ISelItem,
 	mouseDownInItem,
 	mouseOverItem,
 	resetMouseOverItem,
@@ -73,7 +72,7 @@ const TaskBar = (props:any) => {
 	// draw a taskbar
 	const label = taskDtl.name || 'myTask' + index
 
-	const selInfo: ISelItem = {
+	const selInfo: ISelInfo = {
 		type: e_SeqDiagElement.TaskBar,
 		id: taskDtl.id,
 		sname: `Task${taskDtl.id}`,

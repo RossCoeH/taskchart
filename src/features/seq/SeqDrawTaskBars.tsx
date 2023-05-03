@@ -1,22 +1,28 @@
-import { EntityId } from "@reduxjs/toolkit"
-import TaskBar from "./TaskBar"
-import {scaleLinear} from '@visx/scale'
-import { ITaskDtl, ILayout, e_SeqDiagElement, ILinkOut, IHandleSeqMouseDownWithTaskId, IHandleSeqMouseUpWithSelId, ISeqStartMouseDrag, IHandleSeqMouseMovewithIdType, NumberScale } from "./seqTypes"
+import { EntityId } from '@reduxjs/toolkit'
+import TaskBar from './TaskBar'
+import { scaleLinear } from '@visx/scale'
+import {
+
+	e_SeqDiagElement,
+	ILinkOut,
+	IMouseOverInfo,
+	IDrawTasks,
+	ISelInfo,
+} from './seqTypes'
 
 
-interface IDrawTaskBars{
-  taskDtl: ITaskDtl[],
-   xScale:NumberScale,
-   iLayout: ILayout, 
-   handleSvgMouseDown: IHandleSeqMouseDownWithTaskId,
-    handleSvgMouseUp: IHandleSeqMouseUpWithSelId,
-     seqDragStartInfo: ISeqStartMouseDrag | undefined,
-      handleSvgMouseMove: IHandleSeqMouseMovewithIdType,
-      dragStartInfo?: ISeqStartMouseDrag ,
-}
 
-const SeqDrawTaskBars = ({taskDtl, xScale, iLayout, handleSvgMouseDown , handleSvgMouseUp, handleSvgMouseMove,dragStartInfo}:IDrawTaskBars)=> {
-	return () => {
+const SeqDrawTaskBars = ({
+	taskDtl,
+	xScale,
+	iLayout,
+	dragStartInfo,
+	handleMouseDown,
+	handleMouseEnter,
+	handleMouseLeave,
+	handleMouseUp,
+	handleMouseMove,
+}: IDrawTasks  ) =>  {
 		const output =
 			//useMemo(			() =>
 			taskDtl.map((taskItem, index) => {
@@ -35,40 +41,56 @@ const SeqDrawTaskBars = ({taskDtl, xScale, iLayout, handleSvgMouseDown , handleS
 				const ytop = index * iLayout.barSpacing + iLayout.barPad
 				const barHeight = Math.round(iLayout.barSpacing - 2 * iLayout.barPad)
 				const fillColor = 'pink'
-
+const selInfo:ISelInfo={
+	type: e_SeqDiagElement.TaskBar,
+id:taskItem.id,
+sname:`TaskBar ${taskItem.id}`,
+}
+     
+   
 				const handleLocalMouseDown = (
-					e:React.MouseEvent,
-					index:number,
-
-    ) => 					handleSvgMouseDown({e, senderType: e_SeqDiagElement.TaskBar, senderId: taskItem.id, index})
-				
-				const handleLocalMouseUp = (
 					e: React.MouseEvent,
-					selType: (typeof e_SeqDiagElement)[ keyof typeof e_SeqDiagElement ],
-					id: EntityId,
-					index: number
+					index: number,
+					taskId: EntityId
+				) =>
+					handleMouseDown({
+						e,
+						selInfo: selInfo,
+						index,	
+					})
+
+				const handleLocalMouseUp = (
+			{		e ,
+					selInfo
+					}:IMouseOverInfo
 				) => {
 					// console.log(`Mouseup on taskbar `, selInfo)
-					handleSvgMouseUp({e, selType:e_SeqDiagElement.TaskBar, id, index})
+					handleMouseUp({
+						e,
+						selInfo
+					})
 				}
 				const handleLocalMouseEnter = (
 					e: React.MouseEvent,
 					index: number,
-					taskId: EntityId
+				
 				): void => {
 					// console.log(
 					// 	'Seq Chart entered taskid ',
-					// 	taskId,
+					// 	selInfo.id,
 					// 	'dragInfo ',
 					// 	dragStartInfo
 					// )
-					if (dragStartInfo?.startId !== undefined &&
-						(taskDtl[ index ]?.inLinks?.filter(
-							(link: ILinkOut) => link.fromTaskId === dragStartInfo.startId
+					if (
+						dragStartInfo?.selInfo?.id !== undefined &&
+						dragStartInfo?.selInfo?.type === e_SeqDiagElement.TaskBar &&
+						(taskDtl[index]?.inLinks?.filter(
+							(link: ILinkOut) => link.fromTaskId === dragStartInfo.selInfo.id
 						).length > 0 ||
-							taskDtl[ index ]?.retFroms?.filter(
-								(link: ILinkOut) => link.fromTaskId === dragStartInfo.startId
-							).length > 0))
+							taskDtl[index]?.retFroms?.filter(
+								(link: ILinkOut) => link.fromTaskId === dragStartInfo.selInfo.id
+							).length > 0)
+					)
 						alert('link already exists')
 				}
 				const taskExtraClasses = 'nodrop'
@@ -84,22 +106,24 @@ const SeqDrawTaskBars = ({taskDtl, xScale, iLayout, handleSvgMouseDown , handleS
 						xStart={xStart}
 						fill={fillColor}
 						extraClasses={taskExtraClasses}
-						onMouseDown={(e: React.MouseEvent) => handleLocalMouseDown({e, index,taskId: taskItem.id})}
+						onMouseDown={(e: React.MouseEvent) =>
+							handleLocalMouseDown(e, index, taskItem.id)
+						}
 						// onMouseEnter={(e: React.MouseEvent) =>
 						// 	handleLocalMouseEnter(e, index, taskItem.id)
 						// }
-						onMouseMove={(e: React.MouseEvent) => handleSvgMouseMove(
-							e,
-					e_SeqDiagElement.TaskBar,
-					taskId,
-							index
-            )}
-						onMouseUp={(e: React.MouseEvent) => handleLocalMouseUp(
-							e,
-							e_SeqDiagElement.TaskBar,
-						taskItem.id,
-							index
-						)}
+						onMouseMove={(e: React.MouseEvent) =>
+							handleMouseMove({
+								e,
+								selInfo,
+							
+							})
+						}
+						onMouseUp={(e: React.MouseEvent) =>
+							handleLocalMouseUp(
+							{	e,selInfo}
+							)
+						}
 						iLayout={iLayout}
 					></TaskBar>
 				)
@@ -108,5 +132,5 @@ const SeqDrawTaskBars = ({taskDtl, xScale, iLayout, handleSvgMouseDown , handleS
 		//	)
 		return <g>{output}</g>
 	}
-}
+
 export default SeqDrawTaskBars

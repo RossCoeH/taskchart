@@ -12,10 +12,10 @@ export const initialLayout: ILayout = {
 	graphWidth: 500,
 	graphHeight: 500,
 	graphPadTop: 45,
-	graphPadLeft: 3,
+	graphPadLeft: 10,
 	graphPadRight: 40,
 	graphPadBottom: 20,
-	graphxFontOffset: 8,  // this gives soace for teh 0 marker font on axis
+	graphxFontOffset: 12,  // this gives soace for teh 0 marker font on axis
 	graphAxisColor: '#4380cc',
 	barSpacing: 40,
 	portTriLength: 12, 

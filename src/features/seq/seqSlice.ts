@@ -15,7 +15,7 @@ import {
 	Link,
 	IArrayOrderMove,
 	e_SeqDiagElement,
-	ISelDiagItem,
+	ISelInfo,
 } from './seqTypes'
 import { initTasksArray, initLinksArray } from './seqInitValues'
 //import _ from 'lodash'
@@ -48,12 +48,6 @@ export const incrementLinkId= createAsyncThunk(
 const tasksAdapter = createEntityAdapter<Task>()
 const linksAdapter = createEntityAdapter<Link>()
 
-export interface ISelItem {
-	type: e_SeqDiagElement
-	id: EntityId | undefined
-	sname: string
-	desc: string
-}
 
 export interface SeqState {
 	value: number
@@ -61,9 +55,9 @@ export interface SeqState {
 	tasks: EntityState<Task>
 	links: EntityState<Link>
 	isDragging: boolean
-	mouseOverItem?: ISelDiagItem
-	mouseDownInItem?: ISelDiagItem
-	selectedItems: ISelDiagItem[]
+	mouseOverItem?: ISelInfo
+	mouseDownInItem?: ISelInfo
+	selectedItems: ISelInfo[]
 	nextLinkId: number
 	nextTaskId: number
 	linkUpdateCount: number // used to watch for changes in logic
@@ -186,14 +180,14 @@ export const seqSlice = createSlice({
 			console.log('after id move', current(state.tasks.ids))
 			state.taskUpdateCount++ //update to show link logic changed
 		},
-		setMouseOverItem: (state, action: PayloadAction<ISelDiagItem>) => {
+		setMouseOverItem: (state, action: PayloadAction<ISelInfo>) => {
 			state.mouseOverItem = action.payload
 		},
-		setMouseDownInItem: (state, action: PayloadAction<ISelDiagItem>) => {
+		setMouseDownInItem: (state, action: PayloadAction<ISelInfo>) => {
 			state.mouseDownInItem = action.payload
 		},
 
-		resetMouseOverItem: (state, action: PayloadAction<ISelDiagItem>) => {
+		resetMouseOverItem: (state, action: PayloadAction<ISelInfo>) => {
 			if (
 				action.payload.type === state.mouseOverItem?.type &&
 				action.payload.id === state.mouseOverItem?.sname
@@ -202,10 +196,10 @@ export const seqSlice = createSlice({
 				// have checked that we are removing the right item
 				state.mouseOverItem = undefined
 		},
-		setSelectedItem: (state, action: PayloadAction<ISelDiagItem>) => {
+		setSelectedItem: (state, action: PayloadAction<ISelInfo>) => {
 			state.selectedItems = [action.payload]
 		},
-		toggleDiagSelectedItem: (state, action: PayloadAction<ISelDiagItem>) => {
+		toggleDiagSelectedItem: (state, action: PayloadAction<ISelInfo>) => {
 			const index = state.selectedItems.findIndex(
 				(item) => item.sname === action.payload.sname
 			)
@@ -217,7 +211,7 @@ export const seqSlice = createSlice({
 				state.selectedItems.push(action.payload)
 			}
 		},
-		removeSelectedItem: (state, action: PayloadAction<ISelItem>) => {
+		removeSelectedItem: (state, action: PayloadAction<ISelInfo>) => {
 			state.selectedItems.filter((item) => item.sname !== action.payload.sname)
 			state.linkUpdateCount++ //update to show link logic changed
 			state.taskUpdateCount++ //update to show link logic changed

@@ -1,13 +1,12 @@
 import React from 'react';
-import { XY, e_SeqDiagElement } from './seqTypes';
+import { IDragStartItem, XY, e_SeqDiagElement } from './seqTypes';
 import { EntityId } from '@reduxjs/toolkit';
 import { ScaleLinear } from 'd3-scale';
 import { dragAction } from './Seq';
 
 interface ISeqDrawDragLine{
 	dragActionActive: dragAction,
-	dragStart: { x: number; y: number; startId: EntityId; senderType: e_SeqDiagElement; } |
-		undefined,
+	dragStartItem: IDragStartItem,
 	xScale:ScaleLinear<number,number,never>,
 	yScale: ScaleLinear<number, number, never>,
 	mousepos: XY | undefined,
@@ -17,7 +16,7 @@ interface ISeqDrawDragLine{
 
 export const  SeqDrawDragLine= ({
 	dragActionActive,
-	dragStart,
+	dragStartItem,
 	xScale,
 	yScale,
 	mousepos,
@@ -28,25 +27,25 @@ export const  SeqDrawDragLine= ({
 		if (dragActionActive === dragAction.none)
 			return null;
 		//earlyy exit if start task does not exist
-		if (dragStart?.startId === undefined)
+		if (dragStartItem?.selInfo?.id === undefined)
 			return null;
 
 		const dragToTaskIndex = Math.floor(yScale.invert(mousepos?.y || -1));
 		const linkAlreadyExists = dragToTaskIndex === -1
 			? false
-			: matchLinks(dragStart?.startId, taskIds[ dragToTaskIndex ]);
+			: matchLinks(dragStartItem?.selInfo?.id, taskIds[ dragToTaskIndex ]);
 
 		// console.log(
 		// 	`mouse dragActionActive, ${dragActionActive} from indexY ${dragToTaskIndex} to mousepos.x`,
 		// 	dragActionActive
 		// )
 		//	const startTaskId = dragStart?.startId
-		if (dragStart !== undefined &&
+		if (dragStartItem !== undefined &&
 			mousepos !== undefined &&
 			dragActionActive === dragAction.dragLine) {
 			//define cursor style
 			const endSize = linkAlreadyExists ||
-				dragStart.startId === (taskIds[ dragToTaskIndex ] ?? -1)
+				dragStartItem.selInfo?.id === (taskIds[ dragToTaskIndex ] ?? -1)
 				? 2
 				: 5;
 			// console.log(
@@ -58,7 +57,7 @@ export const  SeqDrawDragLine= ({
 			const isReturnLoop= !linkAlreadyExists &&
 				dragToTaskIndex >= 0 &&
 				taskIds &&
-				taskIds.indexOf(dragStart.startId) > dragToTaskIndex
+				taskIds.indexOf(dragStartItem.selInfo.id) > dragToTaskIndex
 			// define color for return loops
 			var endColor = isReturnLoop
 				? 'purple'
@@ -69,8 +68,8 @@ export const  SeqDrawDragLine= ({
 				<>
 					<line
 						className='dragLine'
-						x1={dragStart.x}
-						y1={dragStart.y}
+						x1={dragStartItem.x}
+						y1={dragStartItem.y}
 						x2={mousepos.x}
 						y2={mousepos.y}
 						stroke={ endColor}

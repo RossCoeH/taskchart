@@ -18,18 +18,17 @@ declare type ZoomState = {
 };
 
 interface ISeqDrawTopAxisProps{
-iLayout: ILayout, xScale: AxisScale<AxisScaleOutput>,
-translatePx?:number,
-zoomScale?:number
+iLayout: ILayout,
+ xScale: AxisScale<AxisScaleOutput>,
+
 }
 
 
-export const SeqDrawTopAxis =({iLayout,xScale,translatePx,
-zoomScale}:ISeqDrawTopAxisProps)=> {
+export const SeqDrawTopAxis=({xScale,iLayout}:ISeqDrawTopAxisProps)=> {
 	return useMemo(
 		() => { 
-       const innerZoomScale=zoomScale||1.0
-			 const innerTranslatePx=translatePx||0.0
+      //  const innerZoomScale=zoomScale||1.0
+		//	 const innerTranslatePx=translatePx||0.0
    
 
 			return (<AxisTop
@@ -38,11 +37,12 @@ zoomScale}:ISeqDrawTopAxisProps)=> {
 				label='Time (sec)'
 				labelOffset={15}
 				scale={xScale}
-				numTicks={iLayout.graphWidth > 520 ? 10 : 5}
+				//numTicks={iLayout.graphWidth > 520 ? 10 : 5}
 				stroke='rgb(0,10,10)'
 				strokeWidth='2px'
 				hideZero={false} 
-				left={0} //move across by stroke width to align with grid
+				//left={0} //move across by stroke width to align with grid
+				//tickValues={xScale.ticks}
 				/>
 		)},
 		[ xScale, iLayout.graphWidth ]

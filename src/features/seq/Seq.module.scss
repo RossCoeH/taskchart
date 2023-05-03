@@ -81,13 +81,19 @@
 .seq { 
   display :block;
 
-.graphcontainer{
-  padding-left: 30px;
-  padding-right: 30px;
+.seqGraphContainer{
+  // padding-left: 30px;
+  // padding-right: 30px;
+  text-align: left; //needed to push element to left border
+   flex-direction:column; // needed for vertical align
 }
 }
 .graphaxis{
   pointer-events: none;
+  text-align: left; //needed to push element to left border
+}
+.seqGraphContent{
+  text-align: left; //needed to push element to left border
 }
 .visx-group .visx-axis-tick {
   pointer-events: none;

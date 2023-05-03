@@ -1,6 +1,7 @@
 import { EntityId } from '@reduxjs/toolkit'
 import { CSSProperties } from 'react'
-import { scaleLinear } from '@visx/scale/lib'
+import { ScaleLinear } from 'd3-scale'
+import { ProvidedZoom } from '@visx/zoom/lib/types'
 export type ColorType = CSSProperties['color']
 export interface ILayout {
 	barPad: number
@@ -73,12 +74,20 @@ export interface IBranchLink {
 	hasValidReturn: boolean
 }
 
-export interface ISelDiagItem {
-	type?: string
+	export type IDragStartItem = {
+		x: number
+		y: number
+	selInfo: ISelInfo
+	}
+
+export interface ISelInfo {
+	type: e_SeqDiagElement
+	id: EntityId | undefined
 	sname?: string
-	id?: EntityId
 	desc?: string
 }
+
+
 
 export interface Task {
 	id: number | string
@@ -127,6 +136,7 @@ export interface ITaskDtl {
 	floatTime: number | undefined
 }
 
+
 export interface ILoopListItem {
 	seqStack: number[]
 	loopDuration: number
@@ -150,43 +160,74 @@ export interface IloopInfo {
 }
 
 export interface ISeqStartMouseDrag {
-	startElement: e_SeqDiagElement
-	startId: EntityId
-	index?: number
+	// startElement: e_SeqDiagElement
+	// startId: EntityId
+	selInfo:ISelInfo
+	//index?: number
 	x?: number
 	y?: number
 }
 
 export interface ISeqEndMouseDrag {
-	endElement: e_SeqDiagElement
+	selInfo: ISelInfo
 	allowed: boolean
-	endId: EntityId
+	// endId: EntityId
 	index?: number
 	x?: number
 	y?: number
 }
 
-export interface IHandleSeqMouseDownWithTaskId {
-	e: React.MouseEvent
-	senderType:(typeof e_SeqDiagElement)[keyof typeof e_SeqDiagElement]
-	index?: number
-	senderId?: EntityId
+export interface IHandleSeqMouseDown {
+	e: React.MouseEvent<Element>,
+	selInfo?:ISelInfo,
+	index?:number
 	x?:number,
-	y?: number
+	y?: number,
+	zoom?:ProvidedZoom<SVGElement>,
 }
 
-export interface IHandleSeqMouseUpWithSelId {
-	e: React.MouseEvent<Element, MouseEvent>
-	selType: (typeof e_SeqDiagElement)[keyof typeof e_SeqDiagElement]
-	id: EntityId
-	index: number
-}
+// export interface IHandleSeqMouseUp {
+// 	e: React.MouseEvent<Element, MouseEvent>,
+// 	selInfo: ISelInfo,
+	
 
-export interface IHandleSeqMouseMovewithIdType{
+// }
+
+export interface IHandleSeqMouseMovewithInfo{
 	e: React.MouseEvent, 
-	selType: e_SeqDiagElement,
-	 id: EntityId, 
-	 index: number
+	selInfo:ISelInfo,
+	 index: number,
+	 zoom?:ProvidedZoom<SVGElement>,
 }
 
-export type NumberScale = import("d3-scale").ScaleLinear<number, number, never>
+//export type NumberScale = import("d3-scale").ScaleLinear<number, number, never>
+
+export interface ISeqInfo{
+	xScale: ScaleLinear<number,number,never>
+	iLayout: ILayout
+	dragStartInfo: ISeqStartMouseDrag | undefined
+	handleMouseEnter:({e,selInfo}:IMouseOverInfo)=>void
+	handleMouseLeave:	({e,selInfo}:IMouseOverInfo)=>void				
+	handleMouseDown: ({
+		e,
+		selInfo,
+		index,
+		x,
+		y,
+		zoom,
+	}: IHandleSeqMouseDown)  => void
+	handleMouseUp: 	({e,selInfo,zoom}:IMouseOverInfo)=>void	
+	handleMouseMove:	({e,selInfo,zoom}:IMouseOverInfo)=>void	
+
+}
+
+export interface IMouseOverInfo{
+e: React.MouseEvent<Element>,
+	selInfo: ISelInfo,
+	zoom?:ProvidedZoom<SVGElement>
+}
+
+export interface IDrawTasks  extends ISeqInfo{
+	taskDtl: ITaskDtl[],
+	zoom?:ProvidedZoom<SVGElement>
+	} 

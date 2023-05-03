@@ -1,9 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react'
 import * as _ from 'lodash'
 import { Text } from '@visx/text'
-
 import { RectClipPath } from '@visx/clip-path'
-
 import { Group } from '@visx/group'
 // import { curveBasis } from '@visx/visx'
 // import { LinePath } from '@visx/visx'
@@ -14,7 +12,7 @@ import { GridRows, GridColumns } from '@visx/grid'
 //import react-spring from '@visx/react-spring'
 import { localPoint } from '@visx/event'
 import { Point } from '@visx/point'
-import { Zoom } from '@visx/zoom'
+import { Zoom,applyMatrixToPoint } from '@visx/zoom'
 import { ProvidedZoom, TransformMatrix } from '@visx/zoom/lib/types'
 import { AxisScale, AxisScaleOutput, AxisTop } from '@visx/axis'
 
@@ -28,7 +26,6 @@ import {
 	selLinks,
 	EntArrayToAdapter,
 	mouseOverItem,
-	ISelItem,
 	setMouseOverItem,
 	resetMouseOverItem,
 	toggleDiagSelectedItem,
@@ -52,13 +49,17 @@ import {
 	XY,
 	ITaskDtl,
 	e_SeqDiagElement,
-	ISelDiagItem,
 	IBranchLink,
+	IMouseOverInfo,
+	ISelInfo,
+	IDrawTasks,
 	ILinkIn,
 	ILinkOut,
 	ILayout,
 	ISeqStartMouseDrag,
-	IHandleSeqMouseDownWithTaskId,
+	IHandleSeqMouseDown,
+	IHandleSeqMouseMovewithInfo,
+	IDragStartItem,
 } from './seqTypes'
 import styles from './Seq.module.scss'
 import { useSelector } from 'react-redux'
@@ -84,11 +85,11 @@ import { SeqDrawTopAxis } from './SeqDrawTopAxis'
 import { FileInput } from 'grommet'
 import EditableCell from '../Editable/EditableCell'
 import { ScaleLinear } from 'd3-scale'
+
 import SeqDrawTaskBars from './SeqDrawTaskBars'
+import { transform } from 'typescript'
 // import MyFluentUITable from '../Tables/MyFluentUITable';
 //import MyTable from '../Tables/MyTable'
-
-
 
 export const background = '#f3f3f3'
 
@@ -109,6 +110,7 @@ export enum dragAction {
 	dragLine = 'dragLine',
 	canCreateLink = 'canCreateLink',
 	pan = 'pan',
+	zomm = 'zoom',
 }
 
 export function Seq() {
@@ -117,13 +119,10 @@ export function Seq() {
 	const { vh, vw } = useViewport(/* object with options (if needed) */)
 	//const [isDragging, setIsDragging] = useState(false)
 	const [dragActionActive, setdragActionActive] = useState(dragAction.none)
-	type IDragStart = {
-		x: number
-		y: number
-		startId: EntityId
-		senderType: e_SeqDiagElement
-	}
-	const [dragStart, setDragStart] = useState<IDragStart | undefined>(undefined)
+
+	const [dragStartItem, setDragStartItem] = useState<
+		IDragStartItem | undefined
+	>(undefined)
 	const [mousepos, setMousepos] = useState<XY | undefined>(undefined)
 	const graphAreaRef = useRef<SVGSVGElement | null>(null)
 
@@ -170,18 +169,18 @@ export function Seq() {
 
 	const [keyInlist, setKeyInList] = useState<string[]>([])
 
-	useKeyboardEvent(
-		true,
-		(e: KeyboardEvent) => {
-			console.log('keyup event', e)
-			if (e.key === 'Delete') {
-			}
-			setKeyInList((l) => l.slice(-5).concat([e.key])) //logging keys
-		},
-		[],
+	// const handleKeyPress= useKeyboardEvent(
+	// 	true,
+	// 	(e: KeyboardEvent) => {
+	// 		console.log('keyup event', e)
+	// 		if (e.key === 'Delete') {
+	// 		}
+	// 		setKeyInList((l) => l.slice(-5).concat([e.key])) //logging keys
+	// 	},
+	// 	[],
 
-		{ event: 'keyup', eventOptions: { passive: true } }
-	)
+	// 	{ event: 'keyup', eventOptions: { passive: true } }
+	// )
 
 	const time = (d: Task) => d.duration
 
@@ -215,10 +214,9 @@ export function Seq() {
 
 	// scales
 
-	const xScaleDomainInit= [Math.min(0), Math.max(10, maxEndTime)]
-	
+	const xScaleDomainInit = [Math.min(0), Math.max(10, maxEndTime)]
 
-	const xScale = useMemo(
+	const xScale: ScaleLinear<number, number, never> = useMemo(
 		() =>
 			scaleLinear<number>({
 				domain: [Math.min(0), Math.max(10, maxEndTime)],
@@ -270,23 +268,21 @@ export function Seq() {
 	// 	}
 	// }
 
-	const handleSvgMouseDown= ({
+	const handleSvgMouseDown = ({
 		e,
-		// typeof e_SvgSender[ keyof typeof  e_SvgSender],
-		senderType,
-		senderId,
+		selInfo,
 		index,
 		x,
-		y}:IHandleSeqMouseDownWithTaskId
-	) => {
+		y,
+		zoom,
+	}: IHandleSeqMouseDown) => {
 		// const { onDragStart, resetOnStart } = props
 		if (e !== undefined) {
-			//	e.stopPropagation()
-			e.persist()
+			e.stopPropagation()
+			//		e.persist()
 		}
 		if (dragActionActive === dragAction.none) {
 			//only run if not already dragging as you can move over multiple elements
-
 			// console.log(
 			// 	`MouseDown dragStart from type ${senderType.toString()} -Entity: ${senderId}`
 			// )
@@ -315,19 +311,20 @@ export function Seq() {
 						// 	'index ',
 						// 	index
 						// )
-
+						//
+						const startId = selInfo?.id // this line possibly not needed
 						if (
-							senderType === e_SeqDiagElement.TaskBar &&
-							senderId != undefined
+							selInfo?.type === e_SeqDiagElement.TaskBar &&
+							selInfo.id !== undefined
 						) {
-							setDragStart({
+							setDragStartItem({
+								selInfo,
 								x: gpoint.x,
 								y: gpoint.y,
-								startId: senderId,
-								senderType,
 							})
-							//				console.log('mouseDown dragStart set to', dragStart)
+							
 							setdragActionActive(dragAction.dragLine)
+											console.log('dragActionActive set to', dragActionActive)
 							toggleMousedDown()
 							// console.log(`set dragstart at`, ppoint, ` from `, e.target)
 						} else {
@@ -357,6 +354,18 @@ export function Seq() {
 			}
 		}
 	}
+	interface IHandleSvgDragStart {
+		e: React.MouseEvent<Element>
+		zoom: ProvidedZoom<SVGSVGElement>
+	}
+
+	const handleSvgDragStart = ({ e, zoom }: IHandleSvgDragStart) => {
+		// check if other dragging is active.
+		if (dragActionActive === dragAction.none) {
+			zoom.dragStart(e)
+			console.log('zoom started')
+		} else zoom.dragEnd()
+	}
 
 	// const IsNewLinkPossible(startIndex:number,endIndex:number) =>	    {
 	// 			const startTask = taskDtl[taskIds.indexOf(startIndex)]
@@ -369,12 +378,7 @@ export function Seq() {
 	// 		)
 	// }
 
-	const handleSvgMouseUp = (
-		e: React.MouseEvent<Element, MouseEvent>,
-		selItemUp: (typeof e_SeqDiagElement)[keyof typeof e_SeqDiagElement], //	|{x?: number,		y?: number}
-		id: EntityId,
-		index: number
-	) => {
+	const handleSvgMouseUp = ({ e, selInfo }: IMouseOverInfo) => {
 		let point: XY | undefined = undefined
 		// console.log('preparing Mouse up- isDragging', isDragging)
 		// const { onDragStart, resetOnStart } = props
@@ -390,7 +394,7 @@ export function Seq() {
 			}
 			// check if link avail
 			const endIndex = Math.floor(yScale.invert(mousepos?.y || 0))
-			const startIndex = Math.floor(yScale.invert(dragStart?.y || 0))
+			const startIndex = Math.floor(yScale.invert(dragStartItem?.y || 0))
 			let isLinkPossible = false // assume not possible
 
 			const startTask = taskDtl[startIndex]
@@ -437,7 +441,7 @@ export function Seq() {
 				setdragActionActive(dragAction.none)
 
 				// now  cancel drag
-				setDragStart(undefined)
+				setDragStartItem(undefined)
 				// clear selected items
 				dispatch(removeAllSelectedItems)
 			}
@@ -453,12 +457,7 @@ export function Seq() {
 		// 	}
 	}
 
-	const handleSvgMouseMove = (
-		e: React.MouseEvent,
-		type: e_SeqDiagElement,
-		id: EntityId,
-		index: number
-	) => {
+	const handleSvgMouseMove = ({ e, selInfo, zoom }: IMouseOverInfo) => {
 		// e.stopPropagation()
 		e.persist()
 		// console.log ('MouseMove Seq dragActionActive =', dragActionActive)
@@ -470,7 +469,9 @@ export function Seq() {
 			// console.log('dragMove to position', mousePoint)
 			if (mousePoint && dragActionActive === dragAction.dragLine) {
 				//  check to see if a link can be made
-				if (Math.floor(dragStart?.x || 0) !== Math.floor(mousePoint?.x || 0)) {
+				if (
+					Math.floor(dragStartItem?.x || 0) !== Math.floor(mousePoint?.x || 0)
+				) {
 					//  we have  link attempt
 				}
 			}
@@ -485,11 +486,10 @@ export function Seq() {
 				// 	' id ',
 				// 	id
 				// )
-				handleSvgMouseUp(e, type, id, index)
-
+				handleSvgMouseUp({ e, selInfo, zoom })
 				// now  cancel drag
 				setdragActionActive(dragAction.none)
-				setDragStart(undefined)
+				setDragStartItem(undefined)
 			} else {
 				//temporary lines are in unscaled coords
 				setMousepos(mousePoint)
@@ -502,17 +502,17 @@ export function Seq() {
 
 				// setActiveTask(undefined)
 				//if (dragActionActive == dragAction.none) {
-				if (dragStart !== undefined && mousepos !== undefined) {
+				if (dragStartItem !== undefined && mousepos !== undefined) {
 					// setMousepos(mousepos)
 					// only add if points are not identical - use 0.1 of barSpacing
 					if (
-						Math.abs(dragStart.x - mousepos.x) > 0.05 ||
-						Math.abs(dragStart.y - mousepos.y) > 0.05
+						Math.abs(dragStartItem.x - mousepos.x) > 0.05 ||
+						Math.abs(dragStartItem.y - mousepos.y) > 0.05
 					) {
 						const newPath = {
 							id: nextConnectorId,
 							path: [
-								{ x: dragStart.x, y: dragStart.y },
+								{ x: dragStartItem.x, y: dragStartItem.y },
 								{ x: mousepos.x, y: mousepos.y },
 							],
 						}
@@ -568,11 +568,11 @@ export function Seq() {
 		}
 	}
 
-
-
 	//const DrawTopAxis = SeqDrawTopAxis(iLayout, xScale)
 	//xScale:ScaleLinear<number,number,never>
-	const DrawGraphGrid = () => {
+	const DrawGraphGrid = (
+		xScaleTransformed: ScaleLinear<number, number, never>
+	) => {
 		const numYticks: number = taskIds.length + 1
 		return (
 			<Group>
@@ -584,7 +584,7 @@ export function Seq() {
 					numTicks={numYticks}
 				/>
 				<GridColumns
-					scale={xScale}
+					scale={xScaleTransformed}
 					width={iLayout.graphWidth}
 					height={graphHeight}
 					stroke='#e0e0e0'
@@ -594,11 +594,11 @@ export function Seq() {
 	}
 
 	const dragposTxt = `Mouse Down Start x= ${
-		dragStart && toNum2(dragStart?.x || -999)
-	} , ${dragStart && toNum2(dragStart?.y)} scaled to ${
-		(dragStart?.x && dragStart?.x)?.toFixed(1) || '-'
+		dragStartItem && toNum2(dragStartItem?.x || -999)
+	} , ${dragStartItem && toNum2(dragStartItem?.y)} scaled to ${
+		(dragStartItem?.x && dragStartItem?.x)?.toFixed(1) || '-'
 	}
-	 , 	${((dragStart?.y && dragStart?.y) || -999)?.toFixed(1) || '-'}`
+	 , 	${((dragStartItem?.y && dragStartItem?.y) || -999)?.toFixed(1) || '-'}`
 
 	const mouseposTxt = `Mouse Move to  x= ${
 		mousepos && toNum2(mousepos?.x || -999)
@@ -621,28 +621,29 @@ export function Seq() {
 			</Text>
 		)
 	}
-	const DrawTaskBars=SeqDrawTaskBars({taskDtl, xScale, iLayout, handleSvgMouseDown, handleSvgMouseUp, dragStartInfo, handleSvgMouseMove})
 
-	const handleMouseEnter = (selInfo: ISelDiagItem) => {
-		//	console.log('entered Task - index:', index,taskDtl.id, e.target)
-		dispatch(setMouseOverItem(selInfo))
-		// onMouseEnter && onMouseEnter(e)
-	}
-	const handleMouseLeave = (selInfo: ISelDiagItem) => {
-		//	console.log('entered Task - index:', index,taskDtl.id, e.target)
-		dispatch(resetMouseOverItem(selInfo))
-		// onMouseEnter && onMouseEnter(e)
-	}
-	const handleMouseUp = (selInfo: ISelDiagItem) => {
-		//	console.log('entered Task - index:', index,taskDtl.id, e.target)
-		dispatch(toggleDiagSelectedItem(selInfo))
-		//debugger
-		// onMouseEnter && onMouseEnter(e)
-	}
+	//   duplicated defs : const handleMouseEnter = (
+	// 				e: React.MouseEvent<SVGElement, MouseEvent>,
+	// 				selInfo:ISelInfo
+	// 			) => {
+	// 				//	console.log(selInfo)
+	// 				e.preventDefault()
+	// 				dispatch(setMouseOverItem(selInfo))
+	// 				// onMouseEnter && onMouseEnter(e)
+	// 			}
+	// 			const handleMouseLeave = (
+	// 				e: React.MouseEvent<SVGElement, MouseEvent>,
+	// 				selInfo:ISelInfo
+	// 			) => {
+	// 				e.preventDefault()
+	// 				dispatch(resetMouseOverItem(selInfo))
+	// 			}
+
 	//TODO working on delete of items here
-	const handleKeyPressApp = (e: React.KeyboardEvent<HTMLElement>) => {
+	const handleKeyPress = (e: React.KeyboardEvent<HTMLElement>) => {
 		if (e.key === 'Escape') console.log(`KeyPress`, e.key)
 		if (e.key !== 'Delete') return
+
 		if (mOverItem?.type === e_SeqDiagElement.Link) {
 			const delId = mOverItem?.id
 			if (delId !== undefined) {
@@ -652,44 +653,85 @@ export function Seq() {
 		}
 	}
 
-	const DrawLinks = MakeDrawLinks(
-		taskDtl,
-		iLayout,
-		xScale,
-		yScale,
+	const handleMouseEnter = ({ e, selInfo }: IMouseOverInfo) => {
+		console.log('entered Task - index:', selInfo.sname, e.target)
+		selInfo && dispatch(setMouseOverItem(selInfo))
+	}
+
+	const handleMouseLeave = ({ e, selInfo }: IMouseOverInfo) => {
+		//	console.log('entered Task - index:', index,taskDtl.id, e.target)
+		dispatch(resetMouseOverItem(selInfo))
+		// onMouseEnter && onMouseEnter(e)
+	}
+
+	const handleMouseUp = ({ e, selInfo, x, y }: IHandleSeqMouseDown) => {
+		console.log('entered Task - index:', selInfo, selInfo?.sname, e.target)
+		selInfo && dispatch(toggleDiagSelectedItem(selInfo))
+		//debugger
+		// onMouseEnter && onMouseEnter(e)
+	}
+
+	const DrawTaskBars = (
+		xScale: ScaleLinear<number, number, never>,
+		zoom: ProvidedZoom<SVGElement>
+	) => {
+		const drawprops: IDrawTasks = {
+			taskDtl: taskDtl,
+			xScale,
+			iLayout: iLayout,
+			dragStartInfo: dragStartInfo,
+			zoom,
+			handleMouseEnter,
+			handleMouseLeave,
+			handleMouseDown: handleSvgMouseDown,
+			handleMouseUp: handleSvgMouseUp,
+			handleMouseMove: handleSvgMouseMove,
+		}
+		console.log('Drawprops', drawprops)
+
+		return SeqDrawTaskBars(drawprops)
+	}
+	const DrawLinks = (xScale: ScaleLinear<number,number,never>) =>MakeDrawLinks({
+		taskDtl: taskDtl,
+		iLayout: iLayout,
+		xScale: xScale,
+		dragStartInfo: dragStartInfo,
 		handleMouseEnter,
 		handleMouseLeave,
-		handleKeyPressApp
-	) // ,[	linkUpdateCount() as number,taskUpdateCount,iLayout,xScale,yScale] )
+		handleMouseDown: handleSvgMouseDown,
+		handleMouseUp: handleSvgMouseUp,
+		handleMouseMove: handleSvgMouseMove,
+	})
 
-	const DrawInPorts = () => {
+	const DrawDragLine = (xScale: ScaleLinear<number,number,never>) => dragStartItem
+		? SeqDrawDragLine(
+				// do not process if dragstartItem is undefined
+				{
+					dragActionActive: dragActionActive,
+					dragStartItem,
+					xScale: xScale,
+					yScale: yScale,
+					mousepos,
+					matchLinks,
+					taskIds,
+				}
+		  )
+		: null // return null if  dragstartItem is not defined
+
+	const DrawInPorts = (xScale: ScaleLinear<number, number, never>) => {
 		const map2 = taskDtl.forEach(
 			(taskD) =>
 				taskD.inLinks.map((taskFromItem, curTaskIndex) => {
 					let targetTask = taskFromItem.fromTaskId //taskDtl.find((item) => item.id === taskItem)
 					const fromTaskName = taskDtl[taskFromItem.fromTaskIndex].name
 					if (targetTask === undefined) return null
-					const selInfo: ISelDiagItem = {
+					const selInfo: ISelInfo = {
 						type: e_SeqDiagElement.PortIn,
 						id: curTaskIndex,
 						sname: `In Port from ${fromTaskName} -port ${curTaskIndex}`,
 						desc: `from ${fromTaskName} -port ${curTaskIndex}`,
 					}
 
-					const handleMouseEnter = (
-						e: React.MouseEvent<SVGElement, MouseEvent>
-					) => {
-						//	console.log(selInfo)
-						e.preventDefault()
-						dispatch(setMouseOverItem(selInfo))
-						// onMouseEnter && onMouseEnter(e)
-					}
-					const handleMouseLeave = (
-						e: React.MouseEvent<SVGElement, MouseEvent>
-					) => {
-						e.preventDefault()
-						dispatch(resetMouseOverItem(selInfo))
-					}
 					// console.log(`PortIn selInfo`, selInfo,targetTask)
 					return (
 						<PortTriangle
@@ -703,9 +745,11 @@ export function Seq() {
 							width={iLayout.portTriLength * iLayout.barSpacing}
 							height={(iLayout.portTriLength / 2) * iLayout.barSpacing}
 							fill={'green'}
-							onMouseEnter={(e) => handleMouseEnter}
+							onMouseEnter={(e) => handleMouseEnter({ e, selInfo })}
 							onMouseLeave={(e) => handleMouseLeave}
-							onMouseUp={(e) => handleMouseUp(selInfo)}
+							onMouseUp={(e) =>
+								handleMouseUp({ e, selInfo, index: curTaskIndex })
+							}
 						/>
 					)
 				}) // end of tos map
@@ -731,8 +775,32 @@ export function Seq() {
 		skewY: 0,
 	}
 
-
 	const zoomContainerRef = useRef<SVGElement>(null)
+
+	interface IzoomConstrain {
+		transform: TransformMatrix
+		prevTransform: TransformMatrix
+	}
+	function ZoomConstrain(
+		transform: TransformMatrix,
+		prevTransform: TransformMatrix
+	) {
+		if (dragActionActive !== dragAction.none) return prevTransform
+		else
+
+		//applying view bounds below - not currently working so comment out
+		 { const min = applyMatrixToPoint(transform, { x: 0, y: 0 });
+   const max = applyMatrixToPoint(transform, { x: iLayout.graphWidth, y: iLayout.graphHeight });
+/*    if (max.x >  iLayout.graphWidth ) {
+     return prevTransform;
+   }
+   if (min.x > 0) {
+     return prevTransform;
+   }*/
+		 }
+		 return transform
+	}
+
 	// -- render output starts
 	return (
 		<DragContext.Provider value={DragContextItem}>
@@ -745,6 +813,7 @@ export function Seq() {
 				scaleYMin={1 / 2}
 				scaleYMax={4}
 				initialTransformMatrix={initialTransformMatrix}
+				constrain={ZoomConstrain}
 			>
 				{(zoom) => {
 					console.log(
@@ -755,63 +824,109 @@ export function Seq() {
 					)
 
 					const xScaleDomain = xScale.domain()
-          const xViewTransform:TransformMatrix={
-						translateX:zoom.transformMatrix.translateX,
-					scaleX: zoom.transformMatrix.scaleX,
-    scaleY: 1.0,
-    translateY: 1.0,
-    skewX: 0,
-    skewY: 0,
+					const xViewTransform: TransformMatrix = {
+						translateX: zoom.transformMatrix.translateX,
+						scaleX: zoom.transformMatrix.scaleX,
+						scaleY: 1.0,
+						translateY: 0.0,
+						skewX: 0,
+						skewY: 0,
 					}
-					const xScaleTransformed = scaleLinear({
-						range: xScale.range(), // no change to range as width is same
-						domain: [
-							xScale.invert(
-								(xScale(xScaleDomain[0]) - zoom.transformMatrix.translateX) /
-									zoom.transformMatrix.scaleX
-							),
-							xScale.invert(
-								xScale(xScaleDomain[1] - zoom.transformMatrix.translateX) /
-									zoom.transformMatrix.scaleX
-							),
-						],
-					})
-					console.log('xScaleTransformed: ', xScaleTransformed.domain.toString())
-const textXtransformed= ` matrix(${1/xViewTransform.scaleX}, ${xViewTransform.skewY}, ${xViewTransform.skewX}, ${xViewTransform.scaleY}, ${xViewTransform.translateX/xViewTransform.scaleX}, ${xViewTransform.translateY})`
 
-console.log('textXtransformed', textXtransformed)
+const rescaleXAxis = (scale:ScaleLinear<number,number,never>) => {
+  let newDomain = scale.range().map((r) => {
+    return scale.invert((r - zoom.transformMatrix.translateX)/zoom.transformMatrix.scaleX)
+  })
+  return scale.copy().domain([Math.max(newDomain[0],0),newDomain[1]]) // limit x values to >=0
+}
 
-console.log('xViewTransformed', xViewTransform.toString(),xViewTransform.translateX,xViewTransform.scaleX)
+
+
+					const xMinVis =
+					
+						xScale.invert((xScaleDomain[0]-
+							zoom.transformMatrix.translateX / zoom.transformMatrix.scaleX
+						) / zoom.transformMatrix.scaleX)//									zoom.transformMatrix.scaleX)
+					const xMaxVis = xScale(
+						xScaleDomain[1] -
+							xScale.invert((
+								zoom.transformMatrix.translateX / zoom.transformMatrix.scaleX
+							)/ zoom.transformMatrix.scaleX)
+					)
+
+					/* 											const xMinVis=xScale.invert(
+								(xScale(xScaleDomain[0] )+ zoom.transformMatrix.translateX / zoom.transformMatrix.scaleX)) //									zoom.transformMatrix.scaleX)
+					const xMaxVis= xScale.invert(
+								xScale(xScaleDomain[1] +zoom.transformMatrix.translateX /									zoom.transformMatrix.scaleX)
+							) */
+					const xScaleTransformed: ScaleLinear<number, number, never> = rescaleXAxis(xScale)
+						// scaleLinear({
+						// 	range: xScale.range(), // no change to range as width is same
+						// 	domain: [xMinVis, xMaxVis],
+						// })
+					console.log(
+						'xScaleTransformed: ',
+						xScaleTransformed.domain().toString()
+					)
+
+					const textXtransformed = ` scale(${
+						xViewTransform.scaleX
+					}, ${0}) transform ${xViewTransform.translateX}, ${0})`
+
+					console.log('textXtransformed', textXtransformed)
+
+					console.log(
+						'xViewTransformed',
+						xViewTransform.toString(),
+						xViewTransform.translateX,
+						xViewTransform.scaleX
+					)
 					const handleZoomReset = (zoom: ProvidedZoom<SVGSVGElement>) => {
 						console.log('zoom reset')
 						zoom.reset() //handler for rest of zoom}
 					}
+					const SelInfoBackground: ISelInfo = {
+						type: e_SeqDiagElement.SeqChart,
+						id: 0,
+					}
+						graphAreaRef.current=zoom.containerRef.current
 					return (
+					
 						<>
-							<div className='seq graphContainer' onKeyUp={handleKeyPressApp}>
+							<div
+								className='seqGraphContainer'
+								onKeyUp={handleKeyPress}
+								style={{ textAlign: 'left' }}
+							>
 								{/* // use an outer div here to capture keyup as svg cannot do this */}
+               <svg
+							    	width={iLayout.graphWidth + iLayout.graphxFontOffset}
+									height={iLayout.graphPadTop+iLayout.graphHeight+iLayout.graphPadBottom}> 
 								<svg
 									className='seqGraphAxis'
-									width={
-										iLayout.graphWidth +
-										iLayout.graphPadLeft +
-										iLayout.graphPadRight
-									}
+									width={iLayout.graphWidth + iLayout.graphxFontOffset}
 									height={iLayout.graphPadTop}
 								>
-									<SeqDrawTopAxis iLayout={iLayout} xScale={xScaleTransformed} />
+									{	SeqDrawTopAxis ({iLayout:iLayout, xScale:xScaleTransformed}) 
+									
+									} 
+							
 								</svg>
+
 								<svg
+
+									x={iLayout.graphPadLeft}
+									y={iLayout.graphPadTop}
 									className='seqGraphContent'
-									width={iLayout.graphWidth }
+									width={iLayout.graphWidth + iLayout.graphxFontOffset}
 									height={iLayout.graphHeight}
-									x={0}
-									style={{
-										cursor: zoom.isDragging ? 'grabbing' : 'auto',
-										touchAction: 'none',
-									}}
+							/* 		transform={`matrix(${zoom.transformMatrix.translateX},0,${
+										zoom.transformMatrix.scaleX 
+									},1,0,0`} */
 									ref={zoom.containerRef}
+									onDrag={(e) => zoom.dragEnd}
 									onDoubleClick={(e) => handleZoomReset(zoom)}
+									onDragStart={(e) => handleSvgDragStart({ e, zoom })}
 									onDragEnd={zoom.dragEnd}
 									onMouseLeave={() => {
 										if (zoom.isDragging) zoom.dragEnd()
@@ -819,51 +934,50 @@ console.log('xViewTransformed', xViewTransform.toString(),xViewTransform.transla
 								>
 									<rect
 										key='graphZoneBackground'
-										x={iLayout.graphPadLeft}
-										//	y={iLayout.graphPadTop}
-										width={
-											iLayout.graphWidth +
-											iLayout.graphPadLeft -
-											+iLayout.graphxFontOffset
-										}
+										x={0}
+										width={iLayout.graphWidth + +iLayout.graphxFontOffset}
 										height={graphHeight}
 										fill={background}
 										onMouseDown={(e: React.MouseEvent) =>
-											handleSvgMouseDown({e:e,senderType: e_SeqDiagElement.SeqChart,index:undefined,x: -1,y: -1})
+											handleSvgMouseDown({
+												e,
+												selInfo: SelInfoBackground,
+												index: 0,
+												x: -1,
+												y: -1,
+											})
 										}
 										onMouseUp={(e: React.MouseEvent) =>
-											handleSvgMouseUp(e, e_SeqDiagElement.SeqChart, -1, -1)
+											handleSvgMouseUp({ e, selInfo: SelInfoBackground, zoom })
 										}
 										onMouseMove={(e: React.MouseEvent) => {
 											// console.log('rect move listener active ', e)
-											handleSvgMouseMove(e, e_SeqDiagElement.SeqChart, -1, -1)
+											handleSvgMouseMove({
+												e,
+												selInfo: SelInfoBackground,
+												zoom,
+											})
 										}}
-										transform={textXtransformed}
-										// onDragStart={zoom.dragStart}
-										// onDrag={zoom.dragMove}
-										// onDragEnd={zoom.dragEnd}
-										// onBlur={zoom.dragEnd}
+
 									/>
-									<DrawGraphGrid/>
-									<DrawTaskBars  />
-									<DrawInPorts/>
-									{DrawLinks}
-									<SeqDrawDragLine 					
-		dragActionActive={dragActionActive}
-		dragStart ={dragStart}
-		xScale={xScale}
-		yScale={yScale}
-		mousepos={mousepos}
-		matchLinks={matchLinks}
-		taskIds={taskIds}
-/>
+									{/* {DrawGraphGrid(xScaleTransformed)} */}
+								
+										{DrawTaskBars(xScaleTransformed, zoom)}
+										{DrawInPorts(xScaleTransformed)}
+										{DrawLinks(xScaleTransformed)}
+										{DrawDragLine(xScaleTransformed)}
+							
 									{/* <MyText text= 'tryme' xPos={2} yPos={iLayout.barSpacing/2}/> */}
+								</svg>
 								</svg>
 							</div>
 
 							<br></br>
 							<div>
 								<p>xScale: {(xScale(2) - xScale(1)).toFixed(2)}</p>
+								<p>{`zoom scale ${zoom.transformMatrix.scaleX} transl ${zoom.transformMatrix.translateX}`}</p>
+								<p>{`zoom.IsDragging ${zoom.isDragging} DragActionActive: ${dragActionActive}`}</p>
+								<p>{`xMinVis ${xMinVis} xMaxVis ${xMaxVis}`}</p>
 								<p>Selected item: </p>
 								{/* <p>Mouse is over item: {mouseOverItem??''} </p> */}
 
@@ -892,10 +1006,8 @@ console.log('xViewTransformed', xViewTransform.toString(),xViewTransform.transla
 						</>
 					)
 				}}
-			</Zoom>{' '}
+			</Zoom>
 			)
 		</DragContext.Provider>
 	)
 }
-
-
