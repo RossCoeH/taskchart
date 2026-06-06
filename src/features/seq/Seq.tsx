@@ -195,10 +195,10 @@ export function Seq() {
 		)
 	}
 
-	//let taskDtl: ITaskDtl[] = []
+	
 	const taskDtl = taskGetDtl(taskList, linkList)
 	console.log('exported taskDtl', taskDtl)
-	//,[linkUpdateCount,taskUpdateCount])
+	
 
 	// bounds
 	const maxEndTime = Math.max(...taskDtl.map((task) => task.endTime))
@@ -248,10 +248,13 @@ export function Seq() {
 
 	const gPoint = (e: React.MouseEvent) => {
 		// get point relative to defined svg coords
+		// must subtact axis height as axis in inside svg 
+		// and we want to use same coords for graph elements and mouse interactions
 		if (graphAreaRef !== null && graphAreaRef.current !== null) {
 			const zpt = localPoint(graphAreaRef.current, e) || null
+			zpt?.y && (zpt.y = zpt.y - iLayout.graphPadTop) // adjust for axis height
 			if (zpt != null && zpt.x !== undefined && zpt.y != undefined)
-				// console.log('getlocalpt', zpt)
+				 console.log('getlocalpt', zpt)
 				return zpt //early exit with valid point
 		}
 		return undefined // default fallback value
@@ -280,7 +283,8 @@ export function Seq() {
 		y,
 		zoom,
 	}: IHandleSeqMouseDown) => {
-		// const { onDragStart, resetOnStart } = props
+		// debug: pause here when handler is invoked
+			// const { onDragStart, resetOnStart } = props
 		if (e !== undefined) {
 			e.stopPropagation()
 			//		e.persist()
@@ -305,17 +309,17 @@ export function Seq() {
 					) {
 						const gpoint: Point = gPoint(e) || ({ x: -1, y: -1 } as Point) // use -1 as invalid value
 						let ppoint = { x: e.clientX, y: e.clientY }
-						// console.log(
-						// 	`mouseDown ppoint`,
-						// 	gpoint.y,
-						// 	` from`,
-						// 	e.target,
-						// 	' id ',
-						// 	senderId,
-						// 	'index ',
-						// 	index
-						// )
-						//
+						console.log(
+							`mouseDown ppoint`,
+							gpoint.y,
+							` from`,
+							e.target,
+							' id ',
+							selInfo?.id,
+							'index ',
+							index
+						)
+						
 						const startId = selInfo?.id // this line possibly not needed
 						if (
 							selInfo?.type === e_SeqDiagElement.TaskBar &&
@@ -392,7 +396,7 @@ export function Seq() {
 			const ev = e as React.MouseEvent<Element, MouseEvent>
 			//use gPoint to get consistent ref point and avoid typo
 			if (ev !== undefined) {
-				point = ev && gPoint(ev) // fallback used to remove a null value
+				point = ev && gPoint(ev) ||{x:0,y:0} // fallback used to remove a null value
 				setdragActionActive(dragAction.none)
 				point && setMousepos(point)
 			}

@@ -16,10 +16,14 @@ interface TaskData {
   duration: number;
   startTime: number;
 }
+export type ZoomDragProps = {
+  width: number;
+  height: number;
+};
 
 const ZoomComponent = Zoom as unknown as React.ComponentType<any>;
 
-export const ZoomXYChart = () => {
+export const ZoomXYChart  = () => {
   const chartWidth = 800;
   const chartHeight = 600;
   const leftPanelWidth = 250;
@@ -125,7 +129,7 @@ export const ZoomXYChart = () => {
         scaleYMax={1}
         initialTransformMatrix={initialTransform}
       >
-        {(zoom) => (
+        {(zoom:any) => (
           <div style={{ position: 'relative' }}>
             <svg
               width={chartWidth}

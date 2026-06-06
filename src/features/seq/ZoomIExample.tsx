@@ -29,6 +29,13 @@ export type ZoomIProps = {
   width: number;
   height: number;
 };
+export type ZoomDragProps = {
+  width: number;
+  height: number;
+};
+
+const ZoomComponent = Zoom as unknown as React.ComponentType<any>;
+
 
 export default function ZoomI({ width, height }: ZoomIProps) {
   const [showMiniMap, setShowMiniMap] = useState<boolean>(true);
@@ -38,7 +45,7 @@ export default function ZoomI({ width, height }: ZoomIProps) {
 
   return (
   
-      <Zoom<SVGSVGElement> // Error here: Expected 0 type arguments, but got 1.
+      <ZoomComponent
         width={width}
         height={height}
         scaleXMin={1 / 2}
@@ -47,7 +54,7 @@ export default function ZoomI({ width, height }: ZoomIProps) {
         scaleYMax={4}
         initialTransformMatrix={initialTransform}
       >
-        {(zoom) => (
+        {(zoom:any ) => (
           <div className="relative">
             <svg
               width={width}
@@ -155,6 +162,6 @@ export default function ZoomI({ width, height }: ZoomIProps) {
             </div>
           </div>
         )}
-      </Zoom>
+      </ZoomComponent>
   )
 }
