@@ -1,6 +1,7 @@
-import React, { FC,  useEffect, useRef, useState } from 'react'
+import React, { FC, useEffect, useRef, useState } from 'react'
+import { DndProvider, useDrag, useDrop } from 'react-dnd'
+import { HTML5Backend } from  'react-dnd-html5-backend'
 import './TanTableDnD.css'
-
 import {
 	createColumnHelper,
 	ColumnResizeMode,
@@ -19,8 +20,8 @@ import {
 	ColumnSizingState,
 } from '@tanstack/react-table'
 
-import { DndProvider, useDrag, useDrop } from 'react-dnd'
-import { HTML5Backend } from 'react-dnd-html5-backend'
+// using direct imports from react-dnd (DndProvider, useDrag, useDrop)
+
 import { ILayout, ITaskDtl, Task } from '../seq/seqTypes'
 import { useAppDispatch } from '../../app/hooks/hooks'
 import {  tasksReorder, tasksUpdateOne } from '../seq/seqSlice'
@@ -207,6 +208,13 @@ const defaultColumn: Partial<ColumnDef<Task>> = {
 
 const columnHelper = createColumnHelper<Task>()
 
+/**
+ * DraggableRow is a table row component that enables drag-and-drop reordering of tasks.
+ * 
+ * @param {Object} props
+ * @param {Row<Task>} props.row - The table row data for the current task.
+ * @param {(draggedRowIndex: number, targetRowIndex: number) => void} props.reorderRow - Callback to reorder rows when a drag-and-drop occurs.
+ */
 const DraggableRow: FC<{
 	row: Row<Task>
 	reorderRow: (draggedRowIndex: number, targetRowIndex: number) => void
@@ -226,14 +234,28 @@ const DraggableRow: FC<{
 
 	return (
 		<tr
-			ref={previewRef} //previewRef could go here
-			style={{ opacity: isDragging ? 0.5 : 1 }}
+			ref={(el) => {
+				// forward preview ref (may be a function)
+				try {
+					previewRef && (previewRef as any)(el)
+				} catch (e) {}
+			}}
 		>
-			<td ref={dropRef}>
-				<button ref={dragRef}>🟰</button>
+			<td ref={dropRef as any}>
+				<div ref={dragRef as any} style={{ display: 'inline-block' }}>
+					<button type="button" aria-label="Drag row">
+						<span style={{
+							overflow: 'hidden',
+							clip: 'rect(0,0,0,0)',
+							border: 0,
+							display: 'inline-block'
+						}}>Drag row</span>
+						{'\u2B1C'}
+					</button>
+				</div>
 			</td>
 			{row.getVisibleCells().map((cell) => (
-				<td key={cell.id}>
+				<td key={`${row.id}_${cell.id}`}>
 					{flexRender(cell.column.columnDef.cell, cell.getContext())}
 				</td>
 			))}

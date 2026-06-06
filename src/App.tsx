@@ -1,25 +1,22 @@
-import React,{PropsWithChildren, ReactChild , ReactChildren, ReactFragment, ReactNode} from 'react'
 import logo from './logo.svg';
 import { Counter } from './features/counter/Counter';
 import {Seq} from './features/seq/Seq'
+
 import './App.css';
-//  imported viewport listener from:
-// https://blog.logrocket.com/developing-responsive-layouts-with-react-hooks/
-//--------------------
-import { useEffect } from 'react';
+
+
 import TestHover from './features/seq/TestHover';
 ///import GrommetTable from './features/Tables/GrommetTable';
 
-import Rectabular from './excluded/Rectabular'
+// import Rectabular from './excluded/Rectabular'
 //import TanTableDnD from './features/Tables/TanTable_DnD'
 //import TanTableResize0 from './features/seq/Tantable_Resize0';
 import TwoColorsInput from './features/Inputs/TwoColorsInput/TwoColorsInput';
 import MyTsGrid from './features/MyTsGrid';
 import MyTable from './features/Tables/MyTable';
-import { ZoomXYChart } from './features/seq/ZoomXYChart';
-import ZoomI from './features/seq/ZoomIExample';
-// import GrommetTable from './features/Tables/GrommetTable';
-//import FluentTable from './excluded/FluentUITable';
+// import { ZoomXYChart } from './features/seq/ZoomXYChart';
+// //import ZoomI from './features/seq/ZoomIExample';
+
 
 // import ReactTabTable from './features/Tables/ReactTabTable.xsx'
 
@@ -73,8 +70,8 @@ function App() {
          <div className='TableGraphContainer'>
     
         <Seq/>
-        {/* <ZoomXYChart />
-        <ZoomI width={500} height={400} /> */}
+        {/*  <ZoomXYChart  />
+        <ZoomI width={500} height={400} />  */}
          </div>
       
     </div>

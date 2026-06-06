@@ -52,8 +52,8 @@ const linksAdapter = createEntityAdapter<Link>()
 export interface SeqState {
 	value: number
 	status: string
-	tasks: EntityState<Task>
-	links: EntityState<Link>
+	tasks: EntityState<Task, string | number>
+	links: EntityState<Link, string | number>
 	isDragging: boolean
 	mouseOverItem?: ISelInfo
 	mouseDownInItem?: ISelInfo
@@ -145,7 +145,7 @@ export const seqSlice = createSlice({
 			tasksAdapter.upsertOne(state.tasks, entity)
 			state.taskUpdateCount++ //update to show link logic changed
 		},
-		tasksUpdateOne: (state, entity: PayloadAction<Update<Task>>) => {
+		tasksUpdateOne: (state, entity: PayloadAction<Update<Task, EntityId>>) => {
 			tasksAdapter.updateOne(state.tasks, entity)
 			state.taskUpdateCount++ //update to show link logic changed
 		},

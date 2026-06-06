@@ -1,4 +1,6 @@
 import { translateMatrix, Zoom } from "@visx/zoom";
+// Workaround TSX generic JSX issue: cast Zoom to any for JSX usage
+const ZoomAny = Zoom as unknown as any;
 import { TransformMatrix } from "@visx/zoom/lib/types";
 import useDragWithZoom from './indexZoomComb';
 
@@ -94,12 +96,12 @@ export default function ZoomDrag({ width, height }: ZoomDragProps) {
   };
 
   return (
-    <Zoom<SVGRectElement>
+    <ZoomAny
       width={width}
       height={height}
       initialTransformMatrix={initialTransformMatrix}
     >
-      {(zoom) => {
+      {(zoom: any) => {
         return (
           <>
             <svg width={width} height={height}>
@@ -126,6 +128,6 @@ export default function ZoomDrag({ width, height }: ZoomDragProps) {
           </>
         );
       }}
-    </Zoom>
+    </ZoomAny>
   );
 }

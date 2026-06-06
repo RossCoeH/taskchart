@@ -1,8 +1,8 @@
 import React, {
-  createRef,
   MouseEvent,
   RefObject,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import classNames from "classnames";
@@ -25,7 +25,7 @@ export interface TwoColorsInputProps {
 }
 
 const TwoColorsInput = (props: TwoColorsInputProps): JSX.Element => {
-  const input: RefObject<HTMLSpanElement> = createRef();
+  const input: RefObject<HTMLSpanElement> = useRef<HTMLSpanElement>(null);
   const [colorStartIndex, setColorStartIndex] = useState(-1);
   const [colorEndIndex, setColorEndIndex] = useState(-1);
  
@@ -117,13 +117,15 @@ const TwoColorsInput = (props: TwoColorsInputProps): JSX.Element => {
       })}
       onClick={!props.disabled ? props.onClick : undefined}
     >
+      ...
       <span
         ref={input}
-        placeholder={props.placeholder}
+        data-placeholder={props.placeholder}
         className={classNames("two-colors-input-value", props.inputClassName)}
         onInput={!props.disabled ? onInput : undefined}
         contentEditable={!props.disabled}
       />
+...
     </div>
   );
 };

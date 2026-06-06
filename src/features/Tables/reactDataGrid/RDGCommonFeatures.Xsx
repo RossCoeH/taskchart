@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom'
-import { css } from '@linaria/core';
 import DataGrid from 'react-data-grid/';
 import  { Column} from 'react-data-grid'
 import  { SortColumn } from 'react-data-grid/lib'
@@ -13,29 +12,18 @@ import {style} from "typestyle"
 import { EntityId } from '@reduxjs/toolkit';
 //NOTE DOES NOT WORK AS ROW KEY MUST BE A NUMBER
 
-const toolbarClassname = css`
-  text-align: right;
-  margin-bottom: 8px;
-`;
+const toolbarStyle: React.CSSProperties = {
+  textAlign: 'right',
+  marginBottom: 8,
+};
 
-const dialogContainerClassname = css`
-  position: absolute;
-  inset: 0;
-  display: flex;
-  place-items: center;
-  background: rgba(0, 0, 0, 0.1);
-
-  > dialog {
-    width: 300px;
-    > input {
-      width: 100%;
-    }
-
-    > menu {
-      text-align: right;
-    }
-  }
-`;
+const dialogContainerStyle: React.CSSProperties = {
+  position: 'absolute',
+  inset: 0 as any,
+  display: 'flex',
+  placeItems: 'center' as any,
+  background: 'rgba(0, 0, 0, 0.1)'
+};
 
 const dateFormatter = new Intl.DateTimeFormat(navigator.language);
 const currencyFormatter = new Intl.NumberFormat(navigator.language, {
@@ -246,7 +234,7 @@ export default function CommonFeatures() {
 
   return (
     <>
-      <div className={toolbarClassname}>
+      <div style={toolbarStyle}>
         <ExportButton onExport={() => exportToCsv(gridElement, 'CommonFeatures.csv')}>
           Export to CSV
         </ExportButton>

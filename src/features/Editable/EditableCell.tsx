@@ -7,7 +7,6 @@ import React, {
 	PropsWithRef,
 	ReactComponentElement,
 	ReactElement,
-	ReactFragment,
 	useCallback,
 	useEffect,
 	useMemo,
@@ -20,7 +19,7 @@ import classes from './EditableCell.module.scss'
 import usePortal from 'react-cool-portal'
 import { JsxElement } from 'typescript'
 import useClickOutsideRef from '@pofo/click-outside';
-import useOnclickOutside, { useClickOutside } from '@react-hookz/web' // https://github.com/react-hookz/web
+import { useClickOutside } from '@react-hookz/web' // https://github.com/react-hookz/web
 
 
 enum celltype {

@@ -1,10 +1,14 @@
 // import { textEditorClassname } from '../../../../src/editors/TextEditor';
-import type { EditorProps } from 'react-data-grid/lib/index';
 import type { Task } from '../../../seq/seqTypes';
+
+type DropDownEditorProps = {
+  row: Task;
+  onRowChange: (row: Task, commit: boolean) => void;
+};
 
 const titles = ['Dr.', 'Mr.', 'Mrs.', 'Miss', 'Ms.'] as const;
 
-export default function DropDownEditor({ row, onRowChange }: EditorProps<Task>) {
+export default function DropDownEditor({ row, onRowChange }: DropDownEditorProps) {
   return (
     <select
       className={'TextEditor'}

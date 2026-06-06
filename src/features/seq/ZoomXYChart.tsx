@@ -1,29 +1,29 @@
-import   {Zoom}  from "@visx/zoom";
-import  {Point}  from "@visx/point";
-import {localPoint} from '@visx/event'
-import {TransformMatrix,ProvidedZoom,} from '@visx/zoom/lib/types'
-import {identityMatrix} from '@visx/zoom/lib'
-import React, { useRef, useState } from "react";
+import { Zoom } from "@visx/zoom";
+import { localPoint } from '@visx/event'
+import { TransformMatrix } from '@visx/zoom/lib/types'
+import React from "react";
 import { Group } from "@visx/group";
 
+import { AxisLeft, AxisBottom } from '@visx/axis';
+import { GridRows, GridColumns } from '@visx/grid';
 
 import { XYChart, Axis, LineSeries, Grid } from "@visx/xychart";
-import { scaleLinear } from "@visx/scale";
-const myRefContainer =useRef<HTMLDivElement>
+import { scaleLinear, scaleOrdinal } from "@visx/scale";
 
-// interface TransformMatrix{
-//             scaleX: number;
-//             scaleY: number;
-//             translateX: number;
-//             translateY: number;
-//             skewX: number;
-//             skewY: number;
-//         };
+interface TaskData {
+  id: string;
+  name: string;
+  duration: number;
+  startTime: number;
+}
 
-export const ZoomXYChart =()=> {
-  const width = 500;
-  const height = width;
-  const [showMiniMap, setShowMiniMap] = useState(true);
+const ZoomComponent = Zoom as unknown as React.ComponentType<any>;
+
+export const ZoomXYChart = () => {
+  const chartWidth = 800;
+  const chartHeight = 600;
+  const leftPanelWidth = 250;
+  const rowHeight = 40;
 
   const initialTransform = {
     scaleX: 1,
@@ -33,120 +33,174 @@ export const ZoomXYChart =()=> {
     skewX: 0,
     skewY: 0
   };
- interface Idata{x:number,y:number}
 
-  const data:{x:number,y:number}[] = [
-    { x: 1, y: 10 } ,
-    { x: 2, y: 1 } ,
-    { x: 3, y: 7 } ,
-    { x: 5, y: 4 } ,
-    { x: 5, y: 1 },
+  // Sample task data
+  const tasks: TaskData[] = [
+    { id: '1', name: 'Task A', duration: 5, startTime: 0 },
+    { id: '2', name: 'Task B', duration: 3, startTime: 2 },
+    { id: '3', name: 'Task C', duration: 7, startTime: 1 },
+    { id: '4', name: 'Task D', duration: 4, startTime: 5 },
+    { id: '5', name: 'Task E', duration: 6, startTime: 3 },
   ];
 
-  const accessors = {
-    xAccessor: (d:Point) => d.x,
-    yAccessor: (d:Point) => d.y
-  };
+  // Chart data points for visualization
+  const chartData = tasks.map(task => ({
+    x: task.startTime,
+    y: task.id,
+    name: task.name
+  }));
 
-  function getScaledData(transformMatrix:TransformMatrix) {
-    const scaleX = transformMatrix.scaleX;
-    const scaleY = transformMatrix.scaleY;
-    const xMovement = transformMatrix.translateX;
-    const yMovement = transformMatrix.translateY;
 
-    const realXVals = data.map((value:Idata) => value.x * scaleX);
-    const realYVals = data.map((value:Idata) => value.y * scaleY);
+  // Scales for the chart (NOT affected by zoom)
+  const xScale = scaleLinear<number>({
+    domain: [0, 15], // Time domain in seconds
+    range: [0, chartWidth]
+  });
 
-    const xScale = scaleLinear({
-      domain: [1, 5],
-      range: [0, width / scaleX]
-    });
-    const yScale = scaleLinear({
-      domain: [1, 10],
-      range: [0, height / scaleY]
-    });
-
-    const scaledXVals = data.map(
-      (value) => xScale(value.x) * scaleX + xMovement
-    );
-    const scaledYVals = data.map(
-      (value) => yScale(value.y) * scaleY + yMovement
-    );
-
-    const newData = scaledXVals.map((val, index) => {
-      const y = scaledYVals[index];
-      return { x: val, y: y };
-    });
-    return newData;
-  }
-
+  const yScale = scaleOrdinal<string, number>({
+    domain: tasks.map(t => t.id),
+    range: tasks.map((_, i) => i * rowHeight)
+  });
 
   return (
-    // get error in line below of 'Zoom' cannot be used as a JSX component.
-  //Its instance type 'Zoom' is not a valid JSX element.
-  //  The types returned by 'render()' are incompatible between these types.
-   //   Type '{} | null | undefined' is not assignable to type 'ReactNode'.
-  //      Type '{}' is not assignable to type 'ReactNode'.
-    <>
-    <Zoom<SVGRectElement>
-      width={width}
-      height={height}
-      scaleXMin={1}
-      scaleXMax={2}
-      scaleYMin={1}
-      scaleYMax={2}
-      initialTransformMatrix={initialTransform}
+    <div style={{ display: 'flex', fontFamily: 'Arial, sans-serif' }}>
+      {/* LEFT PANEL - Fixed columns */}
+      <div
+        style={{
+          width: leftPanelWidth,
+          height: chartHeight,
+          borderRight: '1px solid #ccc',
+          overflow: 'hidden',
+          backgroundColor: '#f5f5f5'
+        }}
+      >
+        {/* Column Headers */}
+        <div
+          style={{
+            display: 'flex',
+            height: rowHeight,
+            borderBottom: '2px solid #999',
+            fontWeight: 'bold',
+            backgroundColor: '#e0e0e0'
+          }}
         >
-      {(zoom) => {
-      //  const reScaledData = getScaledData(zoom.transformMatrix);
-        return (
-          <div className="relative">
+          <div style={{ flex: 1, padding: '8px', borderRight: '1px solid #ccc', overflow: 'hidden' }}>Name</div>
+          <div style={{ flex: 1, padding: '8px', borderRight: '1px solid #ccc', overflow: 'hidden', textAlign: 'center' }}>Duration</div>
+          <div style={{ flex: 1, padding: '8px', overflow: 'hidden', textAlign: 'center' }}>Start</div>
+        </div>
+
+        {/* Row Data */}
+        <div style={{ height: chartHeight - rowHeight, overflow: 'hidden' }}>
+          {tasks.map((task, idx) => (
+            <div
+              key={task.id}
+              style={{
+                display: 'flex',
+                height: rowHeight,
+                borderBottom: '1px solid #ddd',
+                backgroundColor: idx % 2 === 0 ? '#fafafa' : '#ffffff'
+              }}
+            >
+              <div style={{ flex: 1, padding: '8px', borderRight: '1px solid #ddd', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {task.name}
+              </div>
+              <div style={{ flex: 1, padding: '8px', borderRight: '1px solid #ddd', overflow: 'hidden', textAlign: 'center' }}>
+                {task.duration}s
+              </div>
+              <div style={{ flex: 1, padding: '8px', overflow: 'hidden', textAlign: 'center' }}>
+                {task.startTime}s
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* RIGHT PANEL - Zoomable chart */}
+      <ZoomComponent
+        width={chartWidth}
+        height={chartHeight}
+        scaleXMin={1}
+        scaleXMax={5}
+        scaleYMin={1}
+        scaleYMax={1}
+        initialTransformMatrix={initialTransform}
+      >
+        {(zoom) => (
+          <div style={{ position: 'relative' }}>
             <svg
-              width={width??300}
-              height={height??30}
+              width={chartWidth}
+              height={chartHeight}
               style={{
                 cursor: zoom.isDragging ? "grabbing" : "grab"
               }}
-         
             >
-              <XYChart
-                height={height}
-                width={width}
-                xScale={{ type: "linear" }}
-                yScale={{ type: "linear" }}
-                 
-              >
-                <rect width={width} height={height} fill={"#fff"}  
-                   ref={zoom.containerRef}/>
+              <defs>
+                <clipPath id="clip-chart">
+                  <rect width={chartWidth} height={chartHeight} />
+                </clipPath>
+              </defs>
 
-                <Group>
-                  <Group>
-                    <Axis hideZero orientation="left" />
-                    <Axis hideZero orientation="bottom" />
-                    <Grid />
-                  </Group>
+              {/* Background */}
+              <rect width={chartWidth} height={chartHeight} fill="#fff" />
 
-                  <Group>
-                    <LineSeries
-                      transform={zoom.toString()}
-                      data={data as Point[]}
-                      dataKey="line"
-                      height={height}
-                      width={width}
-                      
-                      {...accessors}
-                    />
-                  </Group>
-                </Group>
-              </XYChart>
+              {/* Grid and axes - clipped to prevent overflow */}
+              <g clipPath="url(#clip-chart)">
+                {/* Horizontal grid lines for each task */}
+                {tasks.map((task, idx) => (
+                  <line
+                    key={`grid-${task.id}`}
+                    x1={0}
+                    y1={idx * rowHeight + rowHeight / 2}
+                    x2={chartWidth}
+                    y2={idx * rowHeight + rowHeight / 2}
+                    stroke="#e0e0e0"
+                    strokeWidth={1}
+                  />
+                ))}
 
+                {/* Task bars - zoomed horizontally */}
+                <g transform={`translate(${zoom.transformMatrix.translateX}, 0) scale(${zoom.transformMatrix.scaleX}, 1)`}>
+                  {tasks.map((task, idx) => {
+                    const x = xScale(task.startTime);
+                    const width = xScale(task.duration) - xScale(0);
+                    return (
+                      <rect
+                        key={`bar-${task.id}`}
+                        x={x}
+                        y={idx * rowHeight + 5}
+                        width={width}
+                        height={rowHeight - 10}
+                        fill="#4CAF50"
+                        opacity={0.7}
+                        stroke="#2E7D32"
+                        strokeWidth={1}
+                      />
+                    );
+                  })}
+                </g>
+
+                {/* X-axis labels - zoomed */}
+                <g transform={`translate(${zoom.transformMatrix.translateX}, 0) scale(${zoom.transformMatrix.scaleX}, 1)`}>
+                  {[0, 5, 10, 15].map((tick) => (
+                    <g key={`tick-${tick}`} transform={`translate(${xScale(tick)}, 0)`}>
+                      <line y1={chartHeight - 20} y2={chartHeight - 15} stroke="#666" />
+                      <text y={chartHeight - 5} fontSize="12" textAnchor="middle">
+                        {tick}s
+                      </text>
+                    </g>
+                  ))}
+                </g>
+
+                {/* X-axis line */}
+                <line x1={0} y1={chartHeight - 20} x2={chartWidth} y2={chartHeight - 20} stroke="#333" strokeWidth={2} />
+              </g>
+
+              {/* Interactive overlay for zoom/pan */}
               <rect
-                width={width}
-                height={height}
+                width={chartWidth}
+                height={chartHeight}
                 fill="transparent"
-                onTouchStart={zoom.dragStart}
-                onTouchMove={zoom.dragMove}
-                onTouchEnd={zoom.dragEnd}
+                ref={zoom.containerRef}
                 onMouseDown={zoom.dragStart}
                 onMouseMove={zoom.dragMove}
                 onMouseUp={zoom.dragEnd}
@@ -155,16 +209,13 @@ export const ZoomXYChart =()=> {
                 }}
                 onDoubleClick={(event) => {
                   const point = localPoint(event) || { x: 0, y: 0 };
-                  zoom.scale({ scaleX: 1.1, scaleY: 1.1, point });
+                  zoom.scale({ scaleX: 1.5, scaleY: 1, point });
                 }}
               />
             </svg>
           </div>
-       
-        )
-      }
-      } 
-    </Zoom>
-    </>
+        )}
+      </ZoomComponent>
+    </div>
   );
 };

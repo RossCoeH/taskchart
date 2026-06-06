@@ -65,7 +65,6 @@ import styles from './Seq.module.scss'
 import { useSelector } from 'react-redux'
 import {
 	createEntityAdapter,
-	Dictionary,
 	EntityId,
 	EntityState,
 } from '@reduxjs/toolkit'
@@ -91,6 +90,11 @@ import { transform } from 'typescript'
 // import MyFluentUITable from '../Tables/MyFluentUITable';
 //import MyTable from '../Tables/MyTable'
 
+import type { ZoomProps } from "@visx/zoom/lib/Zoom";
+
+const ZoomComponent = Zoom as unknown as React.ComponentType<
+  ZoomProps<SVGSVGElement>
+>;
 export const background = '#f3f3f3'
 
 enum e_CursorStyles {
@@ -443,7 +447,7 @@ export function Seq() {
 				// now  cancel drag
 				setDragStartItem(undefined)
 				// clear selected items
-				dispatch(removeAllSelectedItems)
+				dispatch(removeAllSelectedItems())
 			}
 
 			// if (dragActionActive===dragAction.canCreateLink && !isLinkPossible)	setdragActionActive(dragAction.none)
@@ -805,7 +809,7 @@ export function Seq() {
 	return (
 		<DragContext.Provider value={DragContextItem}>
 			{/* <	 TanTableDnD data={taskDtl} xScale={xScale}  iLayout={iLayout}/> */}
-			<Zoom<SVGSVGElement>
+			<ZoomComponent
 				width={gWidth}
 				height={gHeight}
 				scaleXMin={1 / 2}
@@ -854,11 +858,11 @@ const rescaleXAxis = (scale:ScaleLinear<number,number,never>) => {
 							)/ zoom.transformMatrix.scaleX)
 					)
 
-					/* 											const xMinVis=xScale.invert(
-								(xScale(xScaleDomain[0] )+ zoom.transformMatrix.translateX / zoom.transformMatrix.scaleX)) //									zoom.transformMatrix.scaleX)
-					const xMaxVis= xScale.invert(
-								xScale(xScaleDomain[1] +zoom.transformMatrix.translateX /									zoom.transformMatrix.scaleX)
-							) */
+					// /* 											const xMinVis=xScale.invert(
+					// 			(xScale(xScaleDomain[0] )+ zoom.transformMatrix.translateX / zoom.transformMatrix.scaleX)) //									zoom.transformMatrix.scaleX)
+					// const xMaxVis= xScale.invert(
+					// 			xScale(xScaleDomain[1] +zoom.transformMatrix.translateX /									zoom.transformMatrix.scaleX)
+					// 		) */
 					const xScaleTransformed: ScaleLinear<number, number, never> = rescaleXAxis(xScale)
 						// scaleLinear({
 						// 	range: xScale.range(), // no change to range as width is same
@@ -1006,7 +1010,7 @@ const rescaleXAxis = (scale:ScaleLinear<number,number,never>) => {
 						</>
 					)
 				}}
-			</Zoom>
+			</ZoomComponent>
 			)
 		</DragContext.Provider>
 	)

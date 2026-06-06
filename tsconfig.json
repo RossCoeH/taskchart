@@ -8,7 +8,7 @@
       "esnext"
     ],
     "allowJs": true,
-   
+    "jsx": "react-jsx",
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -16,15 +16,16 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "module": "esnext",
+    "ignoreDeprecations": "6.0",
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    
   },
   "include": [
     "src"
-, "linaria.config.js"  ],
+  ],
   "exclude":[
     "src/excluded"
   ],

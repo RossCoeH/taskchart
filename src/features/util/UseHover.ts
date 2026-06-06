@@ -13,7 +13,7 @@ const useHover = <T extends HTMLElement>(): [
 
   // Keep track of the last node passed to callbackRef
   // so we can remove its event listeners.
-  const ref = useRef<T>()
+  const ref = useRef<T>(undefined)
 
   // Use a callback ref instead of useEffect so that event listeners
   // get changed in the case that the returned ref gets added to
