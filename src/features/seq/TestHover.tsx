@@ -1,5 +1,4 @@
-import React,{ RefObject, useEffect, useRef, useState } from 'react'
-import { background } from './Seq'
+import { RefObject, useEffect, useRef, useState } from 'react'
 
 export function useHover<T extends HTMLElement = HTMLElement>(
   elementRef: RefObject<T>,

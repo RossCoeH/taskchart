@@ -26,6 +26,7 @@ export interface ILayout {
 	retLinkHdropperOffset: number
 	// highlightArrowRatio sets the hover or selected scale
 	highlightSizeRatio: number
+	
 	cColors: {
 		active: ColorType
 		black: ColorType
@@ -38,6 +39,7 @@ export interface ILayout {
 		text?: ColorType
 		icon?: ColorType
 		white: ColorType
+		graphBackground:ColorType 
 	}
 }
 
@@ -230,4 +232,12 @@ e: React.MouseEvent<Element>,
 export interface IDrawTasks  extends ISeqInfo{
 	taskDtl: ITaskDtl[],
 	zoom?:ProvidedZoom<SVGElement>
-	} 
+	}export enum e_CursorStyles {
+	default = '',
+	notAllowed = 'notAllowed',
+	canGrab = 'canGrab',
+	canAccept = 'canAccept',
+	draggable = 'draggable'
+}
+
+ 

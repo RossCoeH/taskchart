@@ -1,129 +1,78 @@
-import React, { useMemo, useRef, useState } from 'react'
-import * as _ from 'lodash'
-import { Text } from '@visx/text'
-import { RectClipPath } from '@visx/clip-path'
 import { Group } from '@visx/group'
-// import { curveBasis } from '@visx/visx'
-// import { LinePath } from '@visx/visx'
-// import { XYChart } from '@visx/visx'
+import { Text } from '@visx/text'
+import * as _ from 'lodash'
+import React, { useMemo, useRef, useState } from 'react'
+
+import { GridColumns, GridRows } from '@visx/grid'
 import { scaleLinear } from '@visx/scale'
-import { AxisBottom } from '@visx/axis'
-import { GridRows, GridColumns } from '@visx/grid'
 //import react-spring from '@visx/react-spring'
 import { localPoint } from '@visx/event'
 import { Point } from '@visx/point'
-import { Zoom,applyMatrixToPoint } from '@visx/zoom'
+import { Zoom, applyMatrixToPoint } from '@visx/zoom'
 import { ProvidedZoom, TransformMatrix } from '@visx/zoom/lib/types'
-import { AxisScale, AxisScaleOutput, AxisTop } from '@visx/axis'
 
-import { useViewport } from 'react-viewport-hooks'
+import { useClickOutside, useToggle } from '@react-hookz/web'
+import {
+	EntityId
+} from '@reduxjs/toolkit'
+import { ScaleLinear } from 'd3-scale'
 import { Tooltip } from 'react-tooltip'
 import 'react-tooltip/dist/react-tooltip.css'
-import { useAppSelector, useAppDispatch } from '../../app/hooks/hooks'
+import { useViewport } from 'react-viewport-hooks'
+import { useAppDispatch, useAppSelector } from '../../app/hooks/hooks'
+import { DragContext, IDragContext } from './dragContext'
+import PortTriangle from './PortTriangle'
+import { SeqDrawDragLine } from './SeqDrawDragLine'
+import MakeDrawLinks from './SeqDrawLinks'
+import { SeqDrawTopAxis } from './SeqDrawTopAxis'
 import { initialLayout } from './seqInitValues'
 import {
-	selTasks,
-	selLinks,
-	EntArrayToAdapter,
-	mouseOverItem,
-	setMouseOverItem,
-	resetMouseOverItem,
-	toggleDiagSelectedItem,
-	selectedItems,
-	linksAddOne,
-	linksUpsertOne,
-	tasksUpsertOne,
-	getNextTaskId,
 	getNextLinkId,
-	removeSelectedItem,
-	removeAllSelectedItems,
+	linksAddOne,
 	linksRemoveMany,
-	selectTasksAll,
+	mouseOverItem,
+	removeAllSelectedItems,
+	resetMouseOverItem,
+	selLinks,
 	selectLinksAll,
-	linkUpdateCount,
-	taskUpdateCount,
+	selectTasksAll,
+	selectedItems,
+	setMouseOverItem,
+	toggleDiagSelectedItem
 } from './seqSlice'
 import {
-	Link,
-	Task,
-	XY,
-	ITaskDtl,
-	e_SeqDiagElement,
-	IBranchLink,
+	IDragStartItem,
+	IDrawTasks,
+	IHandleSeqMouseDown,
 	IMouseOverInfo,
 	ISelInfo,
-	IDrawTasks,
-	ILinkIn,
-	ILinkOut,
-	ILayout,
 	ISeqStartMouseDrag,
-	IHandleSeqMouseDown,
-	IHandleSeqMouseMovewithInfo,
-	IDragStartItem,
+	Task,
+	XY,
+	dragAction,
+	e_CursorStyles,
+	e_SeqDiagElement
 } from './seqTypes'
-import styles from './Seq.module.scss'
-import { useSelector } from 'react-redux'
-import {
-	createEntityAdapter,
-	EntityId,
-	EntityState,
-} from '@reduxjs/toolkit'
-import TaskBar from './TaskBar'
-import { link } from 'fs'
-import { DragContext, IDragContext } from './dragContext'
-import PortDot from './PortDot'
-import PortTriangle from './PortTriangle'
-import DrawPath from './DrawPath'
-import MakeDrawLinks from './MakeDrawLinks'
-import { useClickOutside, useKeyboardEvent, useToggle } from '@react-hookz/web'
-import { assert, debug } from 'console'
 import taskGetDtl from './TaskGetDtl'
-import TanTableDnD from '../Tables/TanTable_DnD'
-import { SeqDrawDragLine } from './SeqDrawDragLine'
-import { SeqDrawTopAxis } from './SeqDrawTopAxis'
-import { FileInput } from 'grommet'
-import EditableCell from '../Editable/EditableCell'
-import { ScaleLinear } from 'd3-scale'
 
 import SeqDrawTaskBars from './SeqDrawTaskBars'
-import { transform } from 'typescript'
 // import MyFluentUITable from '../Tables/MyFluentUITable';
 //import MyTable from '../Tables/MyTable'
 
-import type { ZoomProps } from "@visx/zoom/lib/Zoom";
+import type { ZoomProps } from "@visx/zoom/lib/Zoom"
+import { toNum2 } from './HelperMaths'
 
 const ZoomComponent = Zoom as unknown as React.ComponentType<
   ZoomProps<SVGSVGElement>
 >;
-export const background = '#f3f3f3'
 
-enum e_CursorStyles {
-	default = '',
-	notAllowed = 'notAllowed',
-	canGrab = 'canGrab',
-	canAccept = 'canAccept',
-	draggable = 'draggable',
-}
-
-const toNum2 = (num: number | undefined | typeof NaN) => {
-	return num !== undefined && !isNaN(num) ? num.toFixed(2) : ' '
-}
-
-export enum dragAction {
-	none = 'none',
-	dragLine = 'dragLine',
-	canCreateLink = 'canCreateLink',
-	pan = 'pan',
-	zomm = 'zoom',
-}
 
 export function Seq() {
 	const dispatch = useAppDispatch()
 	const [incrementAmount, setIncrementAmount] = useState('2')
 	const { vh, vw } = useViewport(/* object with options (if needed) */)
-	//const [isDragging, setIsDragging] = useState(false)
-	const [dragActionActive, setdragActionActive] = useState(dragAction.none)
 
+	const [dragActionActive, setdragActionActive] = useState(dragAction.none)
 	const [dragStartItem, setDragStartItem] = useState<
 		IDragStartItem | undefined
 	>(undefined)
@@ -136,7 +85,6 @@ export function Seq() {
 	document.documentElement.style.setProperty('--vw', `${vw}px`)
 	document.documentElement.style.setProperty('--vh', `${vh}px`)
 	const incrementValue = Number(incrementAmount) || 0
-
 	const [nextConnectorId, setNextConnectorId] = useState(2)
 	const initialConnector = {
 		id: 1,
@@ -155,7 +103,7 @@ export function Seq() {
 	const linksAll = useAppSelector((state) => selLinks.selectAll(state))
 	const mOverItem = useAppSelector(mouseOverItem)
 	const nextLinkId = useAppSelector(getNextLinkId)
-	const nextTaskId = useAppSelector(getNextTaskId)
+
 	const [toggledMousedDown, toggleMousedDown] = useToggle()
 	const [dragStartInfo, setDragStartInfo] = useState<
 		ISeqStartMouseDrag | undefined
@@ -209,7 +157,7 @@ export function Seq() {
 	// 	taskDtl.map((task) => task.start + task.duration)
 	// )
 
-	const defaultGraphMargin = { top: 0, right: 30, bottom: 50, left: 0 }
+	
 	const graphHeight = Math.max(taskIds.length + 1, 2) * iLayout.barSpacing
 	// iLayout.graphWidth = isNaN(Number(vw)) ? 600 : Math.min(600, vw)
 	// const graphMargin = defaultGraphMargin
@@ -241,10 +189,7 @@ export function Seq() {
 		range: [0, (taskIds.length + 1) * iLayout.barSpacing],
 		//nice: true,
 	})
-	// xScale.range([0, xMax])
-	// yScale.range([yMax, 0])
-	//---------
-	// svgMouse
+	
 
 	const gPoint = (e: React.MouseEvent) => {
 		// get point relative to defined svg coords
@@ -554,18 +499,14 @@ export function Seq() {
 	}
 	const [dragcontext, setDragcontext] = useState(DragContextItem)
 
-	const matchLinks = (
-		dragStartTaskId: EntityId,
-		dragEndTaskId: EntityId
-	): boolean => {
+	function matchLinks(dragStartTaskId: EntityId,
+		dragEndTaskId: EntityId): boolean {
 		// console.log('drag ,', dragStart, ' --', dragStart?.startId, linkEnts)
 		// if (dragStart?.startId === undefined || linkEnts === undefined) {
 		// 	return false}
-
 		var matchItems = _.find(
 			linkEnts,
-			(linkitem) =>
-				linkitem?.from === dragStartTaskId && linkitem.to == dragEndTaskId
+			(linkitem) => linkitem?.from === dragStartTaskId && linkitem.to == dragEndTaskId
 		)
 		// console.log('matchItems inside MatchLink are: ', matchItems)
 		if (matchItems !== undefined) {
@@ -945,7 +886,7 @@ const rescaleXAxis = (scale:ScaleLinear<number,number,never>) => {
 										x={0}
 										width={iLayout.graphWidth + +iLayout.graphxFontOffset}
 										height={graphHeight}
-										fill={background}
+										fill={iLayout.cColors.graphBackground }
 										onMouseDown={(e: React.MouseEvent) =>
 											handleSvgMouseDown({
 												e,

@@ -31,6 +31,7 @@ export const initialLayout: ILayout = {
 		placeholder: 'LightGray',
 		selected: 'DodgerBlue',
 		white: 'white',
+		graphBackground: '#f3f3f3'
 	},
 	// highlightArrowRatio sets the hover or selected scale
 	highlightSizeRatio: 1.5,

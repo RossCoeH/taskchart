@@ -1,26 +1,23 @@
-import React, { ReactNode } from 'react'
+import { LinePath } from '@visx/shape'
+import { ReactNode } from 'react'
 import {
 	e_SeqDiagElement,
 	IDrawTasks,
-	ILayout,
 	ILinkOut,
- ISelInfo,
- ISeqInfo,
+	ISelInfo,
 	ITaskDtl,
 } from './seqTypes'
-import { LinePath } from '@visx/shape'
-import { ScaleLinear } from 'd3-scale'
 
+import clsx from 'clsx'
+import { useAppDispatch, useAppSelector } from '../../app/hooks/hooks'
+import './SeqDrawLinks.scss'
 import {
-	toggleDiagSelectedItem,
 	mouseOverItem,
 	selectedItems,
+	toggleDiagSelectedItem,
 } from './seqSlice'
-import { useAppDispatch, useAppSelector } from '../../app/hooks/hooks'
-import './MakeDrawLinks.scss'
-import clsx from 'clsx'
 
-const MakeDrawLinks = (
+const SeqDrawLinks = (
 {	taskDtl ,
 	iLayout,
 	xScale ,
@@ -46,35 +43,45 @@ const MakeDrawLinks = (
 		return output
 	}
 
-  
-	const outPort_y = (index: number) =>
-		(index + 1) * iLayout.barSpacing - iLayout.barPad // fetch lower edge of taskbar
+  const rhPortCount = (taskItem: ITaskDtl) => taskItem.outLinks.length+taskItem.retTos.length
 
-	const retPort_x = (taskItem: ITaskDtl) => taskItem.endTime // end of task
-	const retPort_y = (taskItem: ITaskDtl, index: number) =>
-		index * iLayout.barSpacing +
-		1 -
-		iLayout.barPad +
-		iLayout.portLinkVoffset * index
+	const outPort_y = (index: number) =>
+		(index +1) * iLayout.barSpacing - iLayout.barPad // fetches lower edge of taskbar
+
+	//const retPort_x = (taskItem: ITaskDtl) => taskItem.endTime // end of task
+
+	//const retPortCount = (taskItem: ITaskDtl) => taskItem.retTos.length
+	
+///Port_y calculates the y position for in ports, out ports and ret ports based on the index of the port and total count of ports for that task. It spaces the ports evenly within the task bar area, accounting for padding. The formula ensures that ports are distributed from the top to the bottom of the task bar, with equal spacing between them.
+	function Port_y(taskItem: ITaskDtl,taskIndex:number, index: number,portCount:number) {
+		const retPortSpacing =(taskItem: ITaskDtl) => ( iLayout.barSpacing- iLayout.barPad) / (portCount + 1)
+		const y_pt =taskIndex * iLayout.barSpacing +
+			iLayout.barPad +
+			retPortSpacing(taskItem) * (index + 0.5)
+		return y_pt
+			// was iLayout.portLinkVoffset * index
+			
+	}
 
 
 	const inPort_y = (
 		taskItem: ITaskDtl,
+		indexTaskItem: number,
 		indexTaskTo: number,
 		indexPortTo: number
 	) =>
 		indexTaskTo * iLayout.barSpacing +
-		iLayout.barPad /2+
-		iLayout.portLinkVoffset * (indexPortTo + 1) 
+		Port_y(taskItem,indexTaskItem,indexPortTo,taskItem.inLinks.length)
+	//	iLayout.portLinkVoffset * (indexPortTo + 1) 
 
 	const inPort_x = (taskItem: ITaskDtl) => taskItem.startTime // end of task
 	let output: ReactNode[] = []
 	let outputPortCircles: ReactNode[] = []
 	const appMouseOverItem = useAppSelector(mouseOverItem)
 
-	taskDtl.forEach((taskD, indexTaskD) => {
+	taskDtl.forEach((taskIn, indexTaskIn) => {
 		// top level per task
-		if (taskD === undefined) return null
+		if (taskIn === undefined) return null
 
 		// const taskFromItem = taskDtl.from.find((item) => item.id === id)
 		// if (taskFromItem === undefined) {
@@ -83,7 +90,7 @@ const MakeDrawLinks = (
 		// }
 
 		// work through incoming links -retlinks done later
-		const innerMap = taskD.inLinks.map(
+		const innerMap = taskIn.inLinks.map(
 			(inLink: ILinkOut, indexInLink: number) => {
 				// 	// find to Task and matchind index
 				// 	const taskToItem = taskDtl.find((item) => item.id === link.fromTaskId)
@@ -100,7 +107,7 @@ const MakeDrawLinks = (
 		type: e_SeqDiagElement.Link,
 		id: inLink.id,
 		sname: `InLink ${taskFrom.name} - ${indexInLink}`,
-		desc: `InLink ${taskFrom.name} to ${taskD.name}`,
+		desc: `InLink ${taskFrom.name} to ${taskIn.name}`,
 	}
 				const indexTaskOutLink = taskDtl[indexTaskFrom].outLinks.findIndex(
 					(item) => item.id === inLink.id
@@ -112,8 +119,8 @@ const MakeDrawLinks = (
 					y: outPort_y(indexTaskFrom),
 				}
 				const pptEnd = {
-					x: inPort_x(taskD),
-					y: inPort_y(taskD, indexTaskD, indexInLink),
+					x: inPort_x(taskIn),
+					y: Port_y(taskIn, indexTaskIn, indexInLink, taskIn.inLinks.length),
 				}
 				// console.log(
 				// 	`fromTask : ${taskOutItem.name} : link, ,pptEnd,taskToItem,toIndex`,
@@ -152,26 +159,25 @@ const MakeDrawLinks = (
 					// polygon uses x,y sequence in array
 					const color = 'purple'
 
-					const nameStart = `Link Start -Task ${taskDtl[indexTaskFrom].name} to ${taskDtl[indexTaskTo]?.name}`
-					const nameLink = `Link Task ${taskDtl[indexTaskFrom]?.name} to ${taskDtl[indexTaskTo].name}`
-					const nameEnd = `Link End -Task ${taskDtl[indexTaskFrom]?.name} to ${taskDtl[indexTaskTo]?.name}`
+					const nameLink = `Link Start -Task ${taskDtl[indexTaskFrom].name} to ${taskDtl[indexTaskTo]?.name}`
+
 					const selInfoS: ISelInfo = {
 						type: e_SeqDiagElement.LinkStart,
 						id: inLink.id,
 						sname: `Slink ${inLink.id}`,
-						desc: nameStart,
+						desc: nameLink,
 					}
 					const selInfoL: ISelInfo = {
 						type: e_SeqDiagElement.Link,
 						id: inLink.id,
 						sname: `link ${inLink.id}`,
-						desc: nameStart,
+						desc: nameLink,
 					}
 					const selInfoE: ISelInfo = {
 						type: e_SeqDiagElement.LinkEnd,
 						id: inLink.id,
 						sname: `Elink${inLink.id}`,
-						desc: nameStart,
+						desc: nameLink,
 					}
 
 					const startIsHover =
@@ -191,9 +197,9 @@ const MakeDrawLinks = (
 					const linkIsSelected =
 						selectedList.findIndex((item) => item.sname === selInfoL.sname) >= 0
 					if (linkIsSelected) {
-						classnameL = classnameL + ' ' + 'linkIsSelected'
-						classnameS = classnameS + ' ' + 'linkFillIsSelected'
-						classnameE = classnameE + ' ' + 'linkFillIsSelected'
+						classnameL = `${classnameL} linkIsSelected`
+						classnameS = `${classnameS} linkFillIsSelected`
+						classnameE = `${classnameE} linkFillIsSelected`
 					}
 
 					const dotScale = startIsHover || linkIsSelected ? 2.0 : 1.0 // sets display scale
@@ -239,22 +245,45 @@ const MakeDrawLinks = (
 							onClick={(e) => alert(`Click on ${selInfoS.sname}`)}
 						/>
 					)
+					const pathThickness = startIsHover || endIsHover || linkIsSelected ? 3 : 2
 					const polypoints = path
 						.map((item) => `${item.x},${item.y} `)
 						.join(' ')
 					output.push(
+						
+						// first export an invisible polyline of 2x thickness for hit testing
 						<polyline
 							className={classnameL}
-							key={selInfoL.sname}
+							key={selInfoL.sname }
 							//curve={curveLinear}  curveLinear is the default so do not need to specify
 							points={polypoints}
-							// stroke={color || 'orange'}
-							fill='transparent'
-							// strokeWidth='2'
-							radius='4'
+							stroke='lightblue'
+							fill='none'
+							strokeWidth={iLayout.PortDotSize * iLayout.barSpacing * 3} // make hit zone thicker than visible stroke
+							radius={pathThickness}		
+					     	//	onMouseEnter={(e) => handleMouseEnter(selInfoL)}
+							//	onMouseLeave={(e) => handleMouseLeave(selInfoL)}
+							pointerEvents="stroke" // ensure only stroke is interactive not fill zone
+							cursor='pointer'
+							onMouseUp={(e) => onMouseUp && onMouseUp(selInfoL)}
+						 onClick={e => 	alert(`Click on ${selInfoL.sname} Hitzone`)}
+						/>)
+
+						// then export visible polyline with actual stroke width
+						output.push(
+						<polyline
+							className={classnameL}
+							key={selInfoL.sname +'Visible'}
+							//curve={curveLinear}  curveLinear is the default so do not need to specify
+							points={polypoints}
+							stroke={color || 'orange'}
+							fill='none'
+							strokeWidth={pathThickness}
+							radius={pathThickness}
+						  pointerEvents='none' // ensure only invisible stroke is selectable
 							//	onMouseEnter={(e) => handleMouseEnter(selInfoL)}
 							//	onMouseLeave={(e) => handleMouseLeave(selInfoL)}
-							onMouseUp={(e) => onMouseUp && onMouseUp(selInfoL)}
+							//onMouseUp={(e) => onMouseUp && onMouseUp(selInfoL)}
 							// onClick={e => 	alert(`Click on ${selInfoL.sname}`);
 						/>
 					)
@@ -276,11 +305,11 @@ const MakeDrawLinks = (
 		)
 
 		// now do return links or loops
-		const retMap = taskD.retTos.map(
+		const retMap = taskIn.retTos.map(
 			(retLink, indexRetOut, retarray) => {
 				// find to Task and matchind index
 				const indexTaskToItem = retLink.toTaskIndex
-				const indexTaskFromItem = indexTaskD
+				const indexTaskFromItem = indexTaskIn
 				const taskFromEndtime = taskDtl[indexTaskFromItem].endTime
 				const taskToEndtime = taskDtl[indexTaskToItem].endTime
 				// if (taskToItem === undefined) {
@@ -303,28 +332,29 @@ const MakeDrawLinks = (
 					alert('indexPortRetOffsetFrom ws not found')
 				}
 				const ppt0 = {
-					x: taskFromEndtime,
-					y:
+					x:  taskDtl[indexTaskFromItem].endTime,
+					y: 
 					(	indexTaskFromItem * iLayout.barSpacing) +
 						iLayout.barPad +
-						indexPortRetOffsetFrom * iLayout.portLinkVoffset,
+						(indexPortRetOffsetFrom+.5) * iLayout.portLinkVoffset,
+					
 				}
 				const pptEnd = {
-					x: taskToEndtime,
-					y:
-						indexTaskToItem* iLayout.barSpacing +
-						iLayout.barPad +
-						indexPortRetOffsetTo * iLayout.portLinkVoffset ,
+					x: taskDtl[indexTaskToItem].endTime,
+					y:Port_y( taskDtl[indexTaskToItem],indexTaskToItem, indexPortRetOffsetTo,taskDtl[indexTaskToItem].retPorts.length) 
+						// indexTaskToItem* iLayout.barSpacing +
+						// iLayout.barPad +
+						// indexPortRetOffsetTo * iLayout.portLinkVoffset ,
 				}
 				console.log(
 					`RetTask : ${retLink.id} : from: ${indexTaskFromItem} to ${retLink.toTaskIndex} indexPortRetOffsetFrom ${indexPortRetOffsetFrom} indexPortRetOffsetTo ${indexPortRetOffsetTo} VportSpacing ${iLayout.portLinkVoffset} pptEndY ${pptEnd.y}`
 				)
-	const selInfoRet: ISelInfo= {
+/* 	const selInfoRet: ISelInfo= {
 		type: e_SeqDiagElement.Link,
 		id: retLink.id,
 		sname: `RetLink ${taskD.id} - ${indexTaskFromItem}`,
 		desc: `RetLink${taskD.id} - ${indexTaskFromItem}`,
-	}
+	} */
 				const yFromOffset =
 					iLayout.barSpacing/2 -
 					iLayout.barPad +
@@ -358,9 +388,9 @@ const retLinkHdropperOffset=iLayout.retLinkHdropperOffset
 					// polygon uses x,y sequence in array
 					
 
-					const nameStart = `Link Start -Ret ${taskDtl[indexTaskFromItem].name} to ${taskD?.name}`
-					const nameLink = `Link -Ret ${taskDtl[indexTaskFromItem].name} to ${taskD?.name}`
-					const nameEnd = `Link End -Ret ${taskDtl[indexTaskFromItem].name} to ${taskD?.name}`
+					// const nameStart = `Link Start -Ret ${taskDtl[indexTaskFromItem].name} to ${taskD?.name}`
+					const nameLink = `Link -Ret ${taskDtl[indexTaskFromItem].name} to ${taskIn?.name}`
+					const nameEnd = `Link End -Ret ${taskDtl[indexTaskFromItem].name} to ${taskIn?.name}`
 
 					const trianglePoints = [
 						xScale(pptEnd.x) + triLength,
@@ -450,4 +480,4 @@ const retLinkHdropperOffset=iLayout.retLinkHdropperOffset
 		)
 	} else return null
 }
-export default MakeDrawLinks
+export default SeqDrawLinks

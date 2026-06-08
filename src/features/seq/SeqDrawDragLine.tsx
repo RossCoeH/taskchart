@@ -2,7 +2,7 @@ import React from 'react';
 import { IDragStartItem, XY, e_SeqDiagElement } from './seqTypes';
 import { EntityId } from '@reduxjs/toolkit';
 import { ScaleLinear } from 'd3-scale';
-import { dragAction } from './Seq';
+import { dragAction } from './seqTypes';
 
 interface ISeqDrawDragLine{
 	dragActionActive: dragAction,

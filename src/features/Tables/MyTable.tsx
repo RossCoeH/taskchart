@@ -1,3 +1,5 @@
+import { useDebouncedState } from '@react-hookz/web'
+import clx from 'classnames'
 import React, {
 	PropsWithRef,
 	useCallback,
@@ -5,18 +7,13 @@ import React, {
 	useRef,
 	useState,
 } from 'react'
-import { selTasks } from '../seq/seqSlice'
 import usePortal from 'react-cool-portal'
 import { useAppSelector } from '../../app/hooks/hooks'
-import classes from './MyTable.module.scss'
-import { Task } from '../seq/seqTypes'
-import { useDebouncedState } from '@react-hookz/web'
 import EditableCell from '../Editable/EditableCell'
-import clx from 'classnames'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import  {faGripVertical, fas} from '@fortawesome/free-solid-svg-icons'
-import { library } from '@fortawesome/fontawesome-svg-core'
-import { background } from '../seq/Seq'
+import { selTasks } from '../seq/seqSlice'
+import { Task } from '../seq/seqTypes'
+import classes from './MyTable.module.scss'
+
 //  library.add(faGripVertical)
 
 enum eCellType {
